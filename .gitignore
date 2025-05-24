@@ -7,7 +7,10 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
-
+backend
+css_files
+html_templates
+js_files
 node_modules
 dist
 dist-ssr
