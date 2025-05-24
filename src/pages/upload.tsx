@@ -43,6 +43,9 @@ const UploadPage: React.FC = () => {
   // Algorithm parameters
   const [algorithmParams, setAlgorithmParams] = useState<Record<string, number>>({});
 
+  // Add flash message state
+  const [flashMessage, setFlashMessage] = useState<{type: 'success' | 'error' | 'warning', message: string} | null>(null);
+
   useEffect(() => {
     // Extract learning type from URL if coming from another page
     const path = location.pathname;
@@ -229,28 +232,95 @@ const UploadPage: React.FC = () => {
     }, 1000);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // In a real application, you would submit the form data to your backend
-    console.log({
-      learningType,
-      datasetType,
-      predefinedDataset,
-      generationAlgorithm,
-      algorithmParams,
-      projectName,
-      enablePreprocessing,
-      preprocessingOptions,
-      selectedFile
-    });
+    setIsLoading(true);
+    setFlashMessage(null);
 
-    // Redirect to the appropriate page based on learning type
-    if (learningType === 'supervised') {
-      navigate('/supervised');
-    } else if (learningType === 'unsupervised') {
-      navigate('/unsupervised');
-    } else if (learningType === 'preprocessing') {
-      navigate('/preprocessing');
+    // Validate required fields
+    if (!projectName.trim()) {
+      setFlashMessage({ type: 'error', message: 'Please enter a project name' });
+      setIsLoading(false);
+      return;
+    }
+
+    if (datasetType === 'predefined' && !predefinedDataset) {
+      setFlashMessage({ type: 'error', message: 'Please select a predefined dataset' });
+      setIsLoading(false);
+      return;
+    }
+
+    if (datasetType === 'create' && !generationAlgorithm) {
+      setFlashMessage({ type: 'error', message: 'Please select a generation algorithm' });
+      setIsLoading(false);
+      return;
+    }
+
+    if (datasetType === 'custom' && !selectedFile) {
+      setFlashMessage({ type: 'error', message: 'Please select a file to upload' });
+      setIsLoading(false);
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append('learning_type', learningType);
+    formData.append('project_name', projectName);
+    formData.append('dataset_type', datasetType);
+
+    // Handle different dataset types
+    if (datasetType === 'predefined') {
+      formData.append('predefined_dataset', predefinedDataset);
+    } else if (datasetType === 'create') {
+      formData.append('create_algorithm', generationAlgorithm);
+      // Add algorithm parameters
+      Object.entries(algorithmParams).forEach(([key, value]) => {
+        formData.append(`param_${key}`, value.toString());
+      });
+    } else if (datasetType === 'custom' && selectedFile) {
+      formData.append('dataset', selectedFile);
+    }
+
+    // Add preprocessing options
+    formData.append('preprocessing', enablePreprocessing ? 'true' : 'false');
+    if (enablePreprocessing) {
+      Object.entries(preprocessingOptions).forEach(([key, value]) => {
+        if (value) {
+          formData.append('preprocessing_options[]', key);
+        }
+      });
+    }
+
+    try {
+      const response = await fetch('/project', {
+        method: 'POST',
+        body: formData,
+      });
+
+      const responseData = await response.json();
+
+      if (response.ok) {
+        setFlashMessage({ type: 'success', message: responseData.message || 'Upload successful!' });
+        
+        // Handle redirect based on learning type
+        if (learningType === 'supervised' || learningType === 'unsupervised') {
+          navigate('/select-type');
+        } else if (learningType === 'preprocessing') {
+          navigate('/preprocessing-methods');
+        }
+      } else {
+        setFlashMessage({ 
+          type: 'error', 
+          message: responseData.message || 'Upload failed. Please try again.' 
+        });
+      }
+    } catch (error) {
+      console.error('Error during upload:', error);
+      setFlashMessage({ 
+        type: 'error', 
+        message: 'An error occurred during upload. Please try again.' 
+      });
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -324,6 +394,16 @@ const UploadPage: React.FC = () => {
     <Layout>
       <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 py-12">
         <div className="container mx-auto px-4 md:px-6">
+          {flashMessage && (
+            <div className={`mb-4 p-4 rounded-lg ${
+              flashMessage.type === 'success' ? 'bg-green-500/10 text-green-500 border border-green-500/20' :
+              flashMessage.type === 'error' ? 'bg-red-500/10 text-red-500 border border-red-500/20' :
+              'bg-yellow-500/10 text-yellow-500 border border-yellow-500/20'
+            }`}>
+              {flashMessage.message}
+            </div>
+          )}
+          
           <h1 className="text-3xl font-bold text-white mb-8 text-center">
             {learningType === 'supervised' && 'Import Dataset - Supervised Learning'}
             {learningType === 'unsupervised' && 'Import Dataset - Unsupervised Learning'}
@@ -399,6 +479,7 @@ const UploadPage: React.FC = () => {
                           id="predefined-dataset-select"
                           value={predefinedDataset}
                           onChange={(e) => setPredefinedDataset(e.target.value)}
+                          className="text-slate-950"
                         >
                           <option value="">Select a dataset</option>
                           <option value="load_iris">Iris Dataset</option>
@@ -422,13 +503,14 @@ const UploadPage: React.FC = () => {
                   )}
 
                   {datasetType === 'create' && (
-                    <div className="mb-6">
+                    <div className="mb-6 text-slate-950">
                       <FormGroup>
                         <FormLabel htmlFor="create-algorithm-select">Select a generation algorithm</FormLabel>
                         <FormSelect
                           id="create-algorithm-select"
                           value={generationAlgorithm}
                           onChange={(e) => setGenerationAlgorithm(e.target.value)}
+                           className="text-slate-950"
                         >
                           <option value="">Select a generation algorithm</option>
                           <option value="make_blobs">Make Blobs (clusters)</option>
@@ -626,7 +708,7 @@ const UploadPage: React.FC = () => {
         </div>
       </div>
 
-      <style jsx>{`
+      <style >{`
         .toggle-checkbox:checked {
           transform: translateX(100%);
           border-color: var(--primary);
