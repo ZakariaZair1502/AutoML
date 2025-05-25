@@ -66,8 +66,15 @@ CORS(
                 "Access-Control-Allow-Credentials",
             ],
             "supports_credentials": True,
-        }
+        },
+        r"/project": {
+            "origins": ["http://localhost:5173"],
+            "methods": ["POST"],
+            "allow_headers": ["Content-Type"],
+            "supports_credentials": True,
+        },
     },
+    origins=["http://localhost:5173"],
 )
 
 # Configure upload folder
@@ -93,10 +100,46 @@ class User(db.Model):
         return f"User('{self.username}')"
 
 
+ALLOWED_EXTENSIONS = {"csv", "xlsx", "json"}
 params_cache = {}
 algorithm_parameters_cache = {}
 with app.app_context():
     db.create_all()
+
+
+def allowed_file(filename):
+    return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
+
+@app.route("/preview_custom", methods=["POST"])
+def upload_dataset_preview():
+    if "dataset" not in request.files:
+        return jsonify({"error": "Fichier manquant"}), 400
+
+    file = request.files["dataset"]
+
+    if file.filename == "":
+        return jsonify({"error": "Nom de fichier vide"}), 400
+
+    # Sauvegarder le fichier temporairement
+    file_path = os.path.join(UPLOAD_FOLDER, file.filename)
+    file.save(file_path)
+
+    try:
+        # Lire le CSV en DataFrame
+        df = pd.read_csv(file_path)
+
+        # Facultatif : supprimer le fichier après lecture (sécurité/disk space)
+        os.remove(file_path)
+
+        # Retourner l'aperçu
+        preview = {
+            "columns": df.columns.tolist(),
+            "data": df.head(5).values.tolist(),
+        }
+        return jsonify({"preview": preview}), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 
 
 # Routes API pour la prévisualisation des datasets
@@ -133,6 +176,7 @@ def dataset_preview():
 
             return jsonify(preview_data)
         else:
+
             return jsonify({"error": "Dataset non reconnu"}), 400
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -182,18 +226,18 @@ def generate_preview():
 @app.route("/", methods=["POST"])
 def login():
     data = request.get_json()
-    username = data.get('username')
-    password = data.get('password')
-    print('user entred : ',username)
-    print('pass entred : ',password)
+    username = data.get("username")
+    password = data.get("password")
+    print("user entred : ", username)
+    print("pass entred : ", password)
 
     # Check if user exists in the database
     user = User.query.filter_by(username=username).first()
-    print('user : ',user.username)
-    print('passs : ',user.password)
+    print("user : ", user.username)
+    print("passs : ", user.password)
     if user and check_password_hash(user.password, password):
-        print('user : ',user.username)
-        print('passs : ',user.password)
+        print("user : ", user.username)
+        print("passs : ", user.password)
         session["user_id"] = user.username
         print(session["user_id"])
         flash("Login successful!", "success")
@@ -427,15 +471,23 @@ def dashboard():
 @app.route("/register", methods=["GET", "POST"])
 def register():
     data = request.get_json()
-    fullname = data.get('fullname')
-    username = data.get('username')
-    password = data.get('password')
+    fullname = data.get("fullname")
+    username = data.get("username")
+    password = data.get("password")
 
-        # Check if username already exists
+    # Check if username already exists
     existing_user = User.query.filter_by(username=username).first()
     if existing_user:
         flash("Username already taken. Choose another one.", "warning")
-        return jsonify({"message": "Username already taken. Choose another one.", "status": "error"}), 400
+        return (
+            jsonify(
+                {
+                    "message": "Username already taken. Choose another one.",
+                    "status": "error",
+                }
+            ),
+            400,
+        )
 
     # Hash the password before storing it
     hashed_password = generate_password_hash(password, method="pbkdf2:sha256")
@@ -448,292 +500,384 @@ def register():
     db.session.commit()
 
     flash("Registration successful! Please log in.", "success")
-    return jsonify(
-        {"message": "Registration successful! Please log in.", "status": "success"}
-    ), 200
+    return (
+        jsonify(
+            {"message": "Registration successful! Please log in.", "status": "success"}
+        ),
+        200,
+    )
 
 
-@app.route("/project", methods=["GET", "POST"])
+@   app.route("/project", methods=["GET", "POST"])
 def upload():
-    if request.method == "POST":
-        try:
-            if "user_id" not in session:
+    try:
+        # Authentication check
+        if "user_id" not in session:
+            return (
+                jsonify(
+                    {"status": "error", "message": "Please login to create a project."}
+                ),
+                401,
+            )
+
+        user_id = session["user_id"]
+
+        # Get all form data from React template
+        # Handle both FormData and JSON requests
+        if request.content_type and "multipart/form-data" in request.content_type:
+            # FormData submission
+            learning_type = request.form.get("learning_type")
+            project_name = request.form.get("project_name")
+            print(project_name)
+            dataset_type = request.form.get("dataset_type")
+            predefined_dataset = request.form.get("predefined_dataset")
+            generation_algorithm = request.form.get(
+                "create_algorithm"
+            )  # Frontend uses create_algorithm
+            enable_preprocessing = request.form.get("preprocessing") == "true"
+
+            # Get preprocessing options as list
+            preprocessing_options = request.form.getlist("preprocessing_options[]")
+        else:
+            # JSON submission
+            data = request.get_json()
+            if data:
+                print(data)
+                learning_type = data.get("learning_type")
+                project_name = data.get("project_name")
+                dataset_type = data.get("dataset_type")
+                predefined_dataset = data.get("predefined_dataset")
+                generation_algorithm = data.get("generation_algorithm") or data.get(
+                    "create_algorithm"
+                )
+                enable_preprocessing = data.get("preprocessing")
+                preprocessing_options = data.get("preprocessing_options", [])
+            else:
+                return jsonify({"status": "error", "message": "No data received."}), 400
+
+        # Validate required fields
+        if not project_name:
+            return (
+                jsonify({"status": "error", "message": "Please enter a project name."}),
+                400,
+            )
+
+        # Create project directory structure
+        UPLOAD_FOLDER = current_app.config["UPLOAD_FOLDER"]
+        user_folder = os.path.join(UPLOAD_FOLDER, f"user_{user_id}")
+        project_folder = os.path.join(user_folder, project_name)
+
+        os.makedirs(user_folder, exist_ok=True)
+
+        if os.path.exists(project_folder):
+            return (
+                jsonify(
+                    {
+                        "status": "error",
+                        "message": "A project with this name already exists.",
+                    }
+                ),
+                400,
+            )
+
+        os.makedirs(project_folder)
+        os.makedirs(os.path.join(project_folder, "datasets"))
+
+        # Handle different dataset types
+        if dataset_type == "custom":
+            if "dataset" not in request.files and "selectedFile" not in request.files:
+                return jsonify({"status": "error", "message": "No file uploaded."}), 400
+
+            # Check both possible field names from frontend
+            file = request.files.get("dataset") or request.files.get("selectedFile")
+            if not file or file.filename == "":
+                return jsonify({"status": "error", "message": "No file selected."}), 400
+
+            # Validate file extension
+            if not allowed_file(file.filename):
                 return (
                     jsonify(
                         {
-                            "message": "Please login to create a project.",
                             "status": "error",
-                        }
-                    ),
-                    401,
-                )
-            user_id = session["user_id"]
-            # Get form data from FormData (React)
-            learning_type = request.form.get("learningType", "supervised")
-            project_name = request.form.get("projectName")
-            dataset_type = request.form.get("datasetType")
-            predefined_dataset = request.form.get("predefinedDataset")
-            generation_algorithm = request.form.get("generationAlgorithm")
-            enable_preprocessing = request.form.get("enablePreprocessing") == "true"
-            preprocessing_options = request.form.getlist("preprocessingOptions[]")
-            # Validate required fields
-            if not project_name:
-                return (
-                    jsonify(
-                        {"message": "Please enter a project name.", "status": "error"}
-                    ),
-                    400,
-                )
-            if not dataset_type:
-                return (
-                    jsonify(
-                        {"message": "Please select a dataset type.", "status": "error"}
-                    ),
-                    400,
-                )
-            # Store in session
-            session["project_name"] = project_name
-            session["dataset_type"] = dataset_type
-            session["learning_type"] = learning_type
-            session["enable_preprocessing"] = enable_preprocessing
-            session["preprocessing_options"] = preprocessing_options
-            # Create project folders
-            UPLOAD_FOLDER = current_app.config["UPLOAD_FOLDER"]
-            user_folder = os.path.join(UPLOAD_FOLDER, f"user_{user_id}")
-            os.makedirs(user_folder, exist_ok=True)
-            project_folder = os.path.join(user_folder, project_name)
-            if os.path.exists(project_folder):
-                return (
-                    jsonify(
-                        {
-                            "message": "A project with this name already exists.",
-                            "status": "error",
+                            "message": "Only CSV, Excel, and JSON files are supported.",
                         }
                     ),
                     400,
                 )
-            os.makedirs(project_folder, exist_ok=True)
-            os.makedirs(os.path.join(project_folder, "params"), exist_ok=True)
-            os.makedirs(os.path.join(project_folder, "datasets"), exist_ok=True)
-            if learning_type == "preprocessing":
-                os.makedirs(
-                    os.path.join(project_folder, "preprocessing_viz"), exist_ok=True
-                )
-            # Handle different dataset types
-            if dataset_type == "custom":
-                if "selectedFile" not in request.files:
-                    return (
-                        jsonify({"message": "No file uploaded.", "status": "error"}),
-                        400,
-                    )
-                file = request.files["selectedFile"]
-                if not file or file.filename == "":
-                    return (
-                        jsonify({"message": "No file selected.", "status": "error"}),
-                        400,
-                    )
-                if not file.filename.endswith(".csv"):
+
+            # Save and process file
+            filename = secure_filename(f"{file.filename}")
+            file_path = os.path.join(project_folder, "datasets", filename)
+            file.save(file_path)
+
+            try:
+                # Read file based on extension
+                if file.filename.endswith(".csv"):
+                    df = pd.read_csv(file_path)
+                elif file.filename.endswith(".xlsx"):
+                    df = pd.read_excel(file_path)
+                elif file.filename.endswith(".json"):
+                    df = pd.read_json(file_path)
+
+                if df.empty:
+                    os.remove(file_path)
                     return (
                         jsonify(
                             {
-                                "message": "Only CSV files are supported.",
                                 "status": "error",
+                                "message": "The uploaded file is empty.",
                             }
                         ),
                         400,
                     )
-                try:
-                    filename = secure_filename(file.filename)
-                    session["filename"] = filename
-                    file_path = os.path.join(project_folder, "datasets", filename)
-                    file.save(file_path)
-                    df = pd.read_csv(file_path)
-                    if df.empty:
-                        os.remove(file_path)
+
+                # Get preview data for response
+                preview_data = {
+                    "columns": df.columns.tolist(),
+                    "data": df.head().values.tolist(),
+                }
+
+                # Store information in session for select_type route
+                session["filename"] = filename
+                session["project_name"] = project_name
+                session["learning_type"] = learning_type
+
+                return (
+                    jsonify(
+                        {
+                            "status": "success",
+                            "message": "File uploaded successfully!",
+                            "preview": preview_data,
+                            "filename": filename,
+                            "redirect": "/select_type",
+                        }
+                    ),
+                    200,
+                )
+
+            except Exception as e:
+                if os.path.exists(file_path):
+                    os.remove(file_path)
+                return (
+                    jsonify(
+                        {
+                            "status": "error",
+                            "message": f"Error processing file: {str(e)}",
+                        }
+                    ),
+                    500,
+                )
+
+        elif dataset_type == "predefined":
+            if not predefined_dataset:
+                return (
+                    jsonify(
+                        {
+                            "status": "error",
+                            "message": "Please select a predefined dataset.",
+                        }
+                    ),
+                    400,
+                )
+
+            # Load predefined dataset from sklearn
+
+            dataset_loader = {
+                "load_iris": datasets.load_iris,
+                "load_digits": datasets.load_digits,
+                "load_diabetes": datasets.load_diabetes,
+                "load_breast_cancer": datasets.load_breast_cancer,
+            }.get(predefined_dataset)
+            print(dataset_loader)
+
+            if not dataset_loader:
+                return (
+                    jsonify(
+                        {
+                            "status": "error",
+                            "message": "Invalid predefined dataset selected.",
+                        }
+                    ),
+                    400,
+                )
+
+            try:
+                data = dataset_loader()
+                df = pd.DataFrame(data.data, columns=data.feature_names)
+                df["target"] = data.target
+
+                filename = f"{predefined_dataset}.csv"
+                print(filename)
+                file_path = os.path.join(project_folder, "datasets", filename)
+                df.to_csv(file_path, index=False)
+
+                preview_data = {
+                    "columns": df.columns.tolist(),
+                    "data": df.head().values.tolist(),
+                }
+
+                # Store information in session for select_type route
+                session["filename"] = filename
+                session["project_name"] = project_name
+                session["learning_type"] = learning_type
+
+                return (
+                    jsonify(
+                        {
+                            "status": "success",
+                            "message": "Predefined dataset loaded successfully!",
+                            "preview": preview_data,
+                            "filename": filename,
+                            "redirect": "/select_type",
+                        }
+                    ),
+                    200,
+                )
+
+            except Exception as e:
+                return (
+                    jsonify(
+                        {
+                            "status": "error",
+                            "message": f"Error loading dataset: {str(e)}",
+                        }
+                    ),
+                    500,
+                )
+
+        elif dataset_type == "create":
+            if not generation_algorithm:
+                return (
+                    jsonify(
+                        {
+                            "status": "error",
+                            "message": "Please select a generation algorithm.",
+                        }
+                    ),
+                    400,
+                )
+
+            # Get algorithm parameters
+            algorithm_params = {}
+            for key in request.form:
+                if key.startswith("param_"):
+                    param_name = key[6:]
+                    try:
+                        algorithm_params[param_name] = float(request.form[key])
+                    except ValueError:
                         return (
                             jsonify(
                                 {
-                                    "message": "The uploaded CSV file is empty.",
                                     "status": "error",
+                                    "message": f"Invalid parameter value for {param_name}",
                                 }
                             ),
                             400,
                         )
-                    return (
-                        jsonify(
-                            {
-                                "message": "File uploaded successfully!",
-                                "status": "success",
-                                "filename": filename,
-                            }
-                        ),
-                        200,
-                    )
-                except Exception as e:
-                    if os.path.exists(file_path):
-                        os.remove(file_path)
-                    return (
-                        jsonify(
-                            {
-                                "message": f"Error processing file: {str(e)}",
-                                "status": "error",
-                            }
-                        ),
-                        500,
-                    )
-            elif dataset_type == "create":
-                if not generation_algorithm:
-                    return (
-                        jsonify(
-                            {
-                                "message": "Please select a data generation algorithm.",
-                                "status": "error",
-                            }
-                        ),
-                        400,
-                    )
-                dataset_generators = {
-                    "make_blobs": datasets.make_blobs,
-                    "make_moons": datasets.make_moons,
-                    "make_circles": datasets.make_circles,
-                    "make_classification": datasets.make_classification,
-                    "make_regression": datasets.make_regression,
-                }
-                if generation_algorithm in dataset_generators:
-                    try:
-                        params = {}
-                        for key, value in request.form.items():
-                            if key.startswith("algorithmParams["):
-                                param_name = key[len("algorithmParams[") : -1]
-                                try:
-                                    params[param_name] = float(value)
-                                except ValueError:
-                                    params[param_name] = value
-                        X, y = dataset_generators[generation_algorithm](**params)
-                        feature_names = [f"feature_{i}" for i in range(X.shape[1])]
-                        df = pd.DataFrame(X, columns=feature_names)
-                        df["target"] = y
-                        filename = f"{generation_algorithm}_{project_name}.csv"
-                        session["filename"] = filename
-                        file_path = os.path.join(project_folder, "datasets", filename)
-                        df.to_csv(file_path, index=False)
-                        return (
-                            jsonify(
-                                {
-                                    "message": "Dataset generated successfully!",
-                                    "status": "success",
-                                    "filename": filename,
-                                }
-                            ),
-                            200,
-                        )
-                    except Exception as e:
-                        return (
-                            jsonify(
-                                {
-                                    "message": f"Error generating dataset: {str(e)}",
-                                    "status": "error",
-                                }
-                            ),
-                            500,
-                        )
-                else:
-                    return (
-                        jsonify(
-                            {
-                                "message": "Unsupported generation algorithm.",
-                                "status": "error",
-                            }
-                        ),
-                        400,
-                    )
-            elif dataset_type == "predefined":
-                if not predefined_dataset:
-                    return (
-                        jsonify(
-                            {
-                                "message": "Please select a predefined dataset.",
-                                "status": "error",
-                            }
-                        ),
-                        400,
-                    )
-                dataset_loaders = {
-                    "load_iris": datasets.load_iris,
-                    "load_digits": datasets.load_digits,
-                    "load_diabetes": datasets.load_diabetes,
-                    "load_breast_cancer": datasets.load_breast_cancer,
-                }
-                if predefined_dataset in dataset_loaders:
-                    try:
-                        data = dataset_loaders[predefined_dataset]()
-                        filename = f"{predefined_dataset}.csv"
-                        session["filename"] = filename
-                        file_path = os.path.join(project_folder, "datasets", filename)
-                        if hasattr(data, "feature_names"):
-                            df = pd.DataFrame(data.data, columns=data.feature_names)
-                        else:
-                            df = pd.DataFrame(data.data)
-                        df["target"] = data.target
-                        df.to_csv(file_path, index=False)
-                        return (
-                            jsonify(
-                                {
-                                    "message": "Predefined dataset loaded successfully!",
-                                    "status": "success",
-                                    "filename": filename,
-                                }
-                            ),
-                            200,
-                        )
-                    except Exception as e:
-                        return (
-                            jsonify(
-                                {
-                                    "message": f"Error loading predefined dataset: {str(e)}",
-                                    "status": "error",
-                                }
-                            ),
-                            500,
-                        )
-                else:
-                    return (
-                        jsonify(
-                            {
-                                "message": "Unsupported predefined dataset.",
-                                "status": "error",
-                            }
-                        ),
-                        400,
-                    )
-            else:
+
+            # Generate synthetic dataset
+            generators = {
+                "make_blobs": make_blobs,
+                "make_moons": make_moons,
+                "make_circles": make_circles,
+                "make_classification": make_classification,
+                "make_regression": make_regression,
+            }
+            print("generation algorithm : ", generation_algorithm)
+
+            if not generators.get(generation_algorithm):
                 return (
-                    jsonify({"message": "Invalid dataset type.", "status": "error"}),
+                    jsonify(
+                        {
+                            "status": "error",
+                            "message": "Invalid generation algorithm selected.",
+                        }
+                    ),
                     400,
                 )
-        except Exception as e:
-            print(f"Upload error: {str(e)}")
+
+            try:
+                # Generate data
+                if generation_algorithm in [
+                    "make_blobs",
+                    "make_moons",
+                    "make_circles",
+                    "make_classification",
+                ]:
+                    print(algorithm_params)
+                    algorithm_params = {
+                        k: int(v) if isinstance(v, float) and v.is_integer() else v
+                        for k, v in algorithm_params.items()
+                    }
+                    print(algorithm_params)
+                    print("before")
+                    X, y = generators[generation_algorithm](**algorithm_params)
+                    print("after")
+                    df = pd.DataFrame(X)
+                    df["target"] = y
+                elif generation_algorithm == "make_regression":
+                    X, y = generators[generation_algorithm](**algorithm_params)
+                    df = pd.DataFrame(X)
+                    df["target"] = y
+
+                filename = f"{generation_algorithm}_generated.csv"
+                print(filename)
+                file_path = os.path.join(project_folder, "datasets", filename)
+                df.to_csv(file_path, index=False)
+
+                print(file_path)
+                preview_data = {
+                    "columns": df.columns.tolist(),
+                    "data": df.head().values.tolist(),
+                }
+
+                # Store information in session for select_type route
+                session["filename"] = filename
+                session["project_name"] = project_name
+                session["learning_type"] = learning_type
+
+                return (
+                    jsonify(
+                        {
+                            "status": "success",
+                            "message": "Dataset generated successfully!",
+                            "preview": preview_data,
+                            "filename": filename,
+                            "redirect": "/select_type",
+                        }
+                    ),
+                    200,
+                )
+
+            except Exception as e:
+                return (
+                    jsonify(
+                        {
+                            "status": "error",
+                            "message": f"Error generating dataset: {str(e)}",
+                        }
+                    ),
+                    500,
+                )
+
+        else:
             return (
                 jsonify(
-                    {
-                        "message": f"An error occurred during upload: {str(e)}",
-                        "status": "error",
-                    }
+                    {"status": "error", "message": "Invalid dataset type selected."}
                 ),
-                500,
+                400,
             )
-    learning_type = request.args.get("learningType", "supervised")
-    session["learning_type"] = learning_type
-    return (
-        jsonify(
-            {
-                "learning_type": learning_type,
-                "message": "Ready to upload",
-                "status": "success",
-            }
-        ),
-        200,
-    )
+
+    except Exception as e:
+        return (
+            jsonify(
+                {
+                    "status": "error",
+                    "message": f"An unexpected error occurred: {str(e)}",
+                }
+            ),
+            500,
+        )
 
 
 @app.route("/get_algorithm_doc", methods=["GET"])

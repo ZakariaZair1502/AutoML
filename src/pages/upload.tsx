@@ -1,9 +1,22 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
-import Layout from '@/components/Layout';
-import { CustomCard, CustomCardHeader, CustomCardBody, CustomCardFooter } from '@/components/ui/custom-card';
-import { Form, FormGroup, FormLabel, FormInput, FormSelect, FormHelperText, FormCheckbox } from '@/components/ui/custom-form';
-import { CustomButton } from '@/components/ui/custom-button';
+import React, { useState, useRef, useEffect } from "react";
+import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
+import Layout from "@/components/Layout";
+import {
+  CustomCard,
+  CustomCardHeader,
+  CustomCardBody,
+  CustomCardFooter,
+} from "@/components/ui/custom-card";
+import {
+  Form,
+  FormGroup,
+  FormLabel,
+  FormInput,
+  FormSelect,
+  FormHelperText,
+  FormCheckbox,
+} from "@/components/ui/custom-form";
+import { CustomButton } from "@/components/ui/custom-button";
 
 interface DatasetPreview {
   columns: string[];
@@ -13,16 +26,18 @@ interface DatasetPreview {
 const UploadPage: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const [learningType, setLearningType] = useState<string>('supervised');
-  const [datasetType, setDatasetType] = useState<string>('custom');
-  const [predefinedDataset, setPredefinedDataset] = useState<string>('');
-  const [generationAlgorithm, setGenerationAlgorithm] = useState<string>('');
-  const [projectName, setProjectName] = useState<string>('');
-  const [enablePreprocessing, setEnablePreprocessing] = useState<boolean>(false);
+  const [searchParams] = useSearchParams();
+  const [learningType, setLearningType] = useState<string>("supervised");
+  const [datasetType, setDatasetType] = useState<string>("custom");
+  const [predefinedDataset, setPredefinedDataset] = useState<string>("");
+  const [generationAlgorithm, setGenerationAlgorithm] = useState<string>("");
+  const [projectName, setProjectName] = useState<string>("");
+  const [enablePreprocessing, setEnablePreprocessing] =
+    useState<boolean>(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewData, setPreviewData] = useState<DatasetPreview | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [uploadProgress, setUploadProgress] = useState<number>(0);
+  
   const fileInputRef = useRef<HTMLInputElement>(null);
   const dropZoneRef = useRef<HTMLDivElement>(null);
 
@@ -37,24 +52,29 @@ const UploadPage: React.FC = () => {
     dimensionality_reduction: false,
     data_transformation: false,
     feature_engineering: false,
-    data_balancing: false
+    data_balancing: false,
   });
 
   // Algorithm parameters
-  const [algorithmParams, setAlgorithmParams] = useState<Record<string, number>>({});
+  const [algorithmParams, setAlgorithmParams] = useState<
+    Record<string, number>
+  >({});
 
   // Add flash message state
-  const [flashMessage, setFlashMessage] = useState<{type: 'success' | 'error' | 'warning', message: string} | null>(null);
+  const [flashMessage, setFlashMessage] = useState<{
+    type: "success" | "error" | "warning";
+    message: string;
+  } | null>(null);
 
   useEffect(() => {
     // Extract learning type from URL if coming from another page
     const path = location.pathname;
-    if (path.includes('/supervised')) {
-      setLearningType('supervised');
-    } else if (path.includes('/unsupervised')) {
-      setLearningType('unsupervised');
-    } else if (path.includes('/preprocessing')) {
-      setLearningType('preprocessing');
+    if (path.includes("/supervised")) {
+      setLearningType("supervised");
+    } else if (path.includes("/unsupervised")) {
+      setLearningType("unsupervised");
+    } else if (path.includes("/preprocessing")) {
+      setLearningType("preprocessing");
     }
   }, [location]);
 
@@ -63,8 +83,18 @@ const UploadPage: React.FC = () => {
     const dropZone = dropZoneRef.current;
     if (!dropZone) return;
 
-    const highlight = () => dropZone.classList.add('border-primary', 'bg-primary-dark', 'bg-opacity-10');
-    const unhighlight = () => dropZone.classList.remove('border-primary', 'bg-primary-dark', 'bg-opacity-10');
+    const highlight = () =>
+      dropZone.classList.add(
+        "border-primary",
+        "bg-primary-dark",
+        "bg-opacity-10"
+      );
+    const unhighlight = () =>
+      dropZone.classList.remove(
+        "border-primary",
+        "bg-primary-dark",
+        "bg-opacity-10"
+      );
     const preventDefaults = (e: Event) => {
       e.preventDefault();
       e.stopPropagation();
@@ -73,40 +103,40 @@ const UploadPage: React.FC = () => {
     const handleDrop = (e: DragEvent) => {
       preventDefaults(e);
       unhighlight();
-      
+
       if (e.dataTransfer?.files && e.dataTransfer.files.length > 0) {
         handleFiles(e.dataTransfer.files);
       }
     };
 
-    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+    ["dragenter", "dragover", "dragleave", "drop"].forEach((eventName) => {
       dropZone.addEventListener(eventName, preventDefaults, false);
     });
 
-    ['dragenter', 'dragover'].forEach(eventName => {
+    ["dragenter", "dragover"].forEach((eventName) => {
       dropZone.addEventListener(eventName, highlight, false);
     });
 
-    ['dragleave', 'drop'].forEach(eventName => {
+    ["dragleave", "drop"].forEach((eventName) => {
       dropZone.addEventListener(eventName, unhighlight, false);
     });
 
-    dropZone.addEventListener('drop', handleDrop as EventListener, false);
+    dropZone.addEventListener("drop", handleDrop as EventListener, false);
 
     return () => {
-      ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+      ["dragenter", "dragover", "dragleave", "drop"].forEach((eventName) => {
         dropZone.removeEventListener(eventName, preventDefaults, false);
       });
 
-      ['dragenter', 'dragover'].forEach(eventName => {
+      ["dragenter", "dragover"].forEach((eventName) => {
         dropZone.removeEventListener(eventName, highlight, false);
       });
 
-      ['dragleave', 'drop'].forEach(eventName => {
+      ["dragleave", "drop"].forEach((eventName) => {
         dropZone.removeEventListener(eventName, unhighlight, false);
       });
 
-      dropZone.removeEventListener('drop', handleDrop as EventListener, false);
+      dropZone.removeEventListener("drop", handleDrop as EventListener, false);
     };
   }, []);
 
@@ -119,37 +149,41 @@ const UploadPage: React.FC = () => {
   };
 
   const previewFile = (file: File) => {
-    // For demo purposes, we'll simulate reading a CSV file
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      try {
-        const content = e.target?.result as string;
-        if (content) {
-          const lines = content.split('\n');
-          const headers = lines[0].split(',');
-          const rows = lines.slice(1, 6).map(line => line.split(','));
-          setPreviewData({ columns: headers, data: rows });
-          simulateUploadProgress();
+    setIsLoading(true);
+    
+    // Créer un FormData pour envoyer le fichier
+    const formData = new FormData();
+    formData.append("dataset", file);
+    
+    // Envoyer le fichier au backend pour prévisualisation
+    fetch("http://localhost:5000/preview_custom", {
+      method: "POST",
+      credentials: "include",
+      body: formData,
+    })
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
         }
-      } catch (error) {
-        console.error('Error parsing file:', error);
-        setPreviewData(null);
-      }
-    };
-    reader.readAsText(file);
-  };
-
-  const simulateUploadProgress = () => {
-    setUploadProgress(0);
-    const interval = setInterval(() => {
-      setUploadProgress(prev => {
-        if (prev >= 100) {
-          clearInterval(interval);
-          return 100;
+        return response.json();
+      })
+      .then((responseData) => {
+        // Si la réponse contient des données de prévisualisation
+        if (responseData.preview) {
+          setPreviewData(responseData.preview);
+        } else {
+          throw new Error("No preview data received");
         }
-        return prev + 5;
+        setIsLoading(false);
+      })
+      .catch((error) => {
+        console.error("Preview error:", error);
+        setFlashMessage({
+          type: "error",
+          message: error instanceof Error ? error.message : "Unknown preview error",
+        });
+        setIsLoading(false);
       });
-    }, 100);
   };
 
   const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -170,66 +204,96 @@ const UploadPage: React.FC = () => {
     setPreviewData(null);
   };
 
-  const handlePreprocessingToggle = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handlePreprocessingToggle = (
+    e: React.ChangeEvent<HTMLInputElement>
+  ) => {
     setEnablePreprocessing(e.target.checked);
   };
 
-  const handlePreprocessingOptionChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handlePreprocessingOptionChange = (
+    e: React.ChangeEvent<HTMLInputElement>
+  ) => {
     const { name, checked } = e.target;
-    setPreprocessingOptions(prev => ({
+    setPreprocessingOptions((prev) => ({
       ...prev,
-      [name]: checked
+      [name]: checked,
     }));
   };
 
   const handlePredefinedDatasetPreview = () => {
     if (!predefinedDataset) {
-      alert('Please select a dataset');
+      alert("Please select a dataset");
       return;
     }
-    
+
     setIsLoading(true);
-    // Simulate API call
-    setTimeout(() => {
-      // Mock data for preview
-      const mockData = {
-        columns: ['sepal_length', 'sepal_width', 'petal_length', 'petal_width', 'species'],
-        data: [
-          ['5.1', '3.5', '1.4', '0.2', 'setosa'],
-          ['4.9', '3.0', '1.4', '0.2', 'setosa'],
-          ['4.7', '3.2', '1.3', '0.2', 'setosa'],
-          ['4.6', '3.1', '1.5', '0.2', 'setosa'],
-          ['5.0', '3.6', '1.4', '0.2', 'setosa']
-        ]
-      };
-      setPreviewData(mockData);
-      setIsLoading(false);
-    }, 1000);
+    
+    // Utiliser l'API réelle au lieu des données mockées
+    fetch(`http://localhost:5000/api/dataset_preview?dataset=${predefinedDataset}`, {
+      method: "GET",
+      credentials: "include",
+    })
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return response.json();
+      })
+      .then((data) => {
+        setPreviewData(data);
+        setIsLoading(false);
+      })
+      .catch((error) => {
+        console.error("Preview error:", error);
+        setFlashMessage({
+          type: "error",
+          message: error instanceof Error ? error.message : "Unknown preview error",
+        });
+        setIsLoading(false);
+      });
   };
 
   const handleGeneratedDatasetPreview = () => {
     if (!generationAlgorithm) {
-      alert('Please select an algorithm');
+      alert("Please select an algorithm");
       return;
     }
-    
+
     setIsLoading(true);
-    // Simulate API call
-    setTimeout(() => {
-      // Mock data for preview based on algorithm
-      const mockData = {
-        columns: ['feature1', 'feature2', 'target'],
-        data: [
-          ['0.23', '0.56', '1'],
-          ['0.45', '0.78', '0'],
-          ['0.67', '0.12', '1'],
-          ['0.89', '0.34', '0'],
-          ['0.12', '0.90', '1']
-        ]
-      };
-      setPreviewData(mockData);
-      setIsLoading(false);
-    }, 1000);
+    
+    // Préparer les paramètres de l'algorithme
+    const params = algorithmParams || {};
+    
+    // Utiliser l'API réelle au lieu des données mockées
+    fetch("http://localhost:5000/api/generate_preview", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      credentials: "include",
+      body: JSON.stringify({
+        algorithm: generationAlgorithm,
+        params: params,
+      }),
+    })
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return response.json();
+      })
+      .then((data) => {
+        setPreviewData(data);
+        setIsLoading(false);
+      })
+      .catch((error) => {
+        console.error("Preview error:", error);
+        setFlashMessage({
+          type: "error",
+          message: error instanceof Error ? error.message : "Unknown preview error",
+        });
+        setIsLoading(false);
+      });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -239,85 +303,112 @@ const UploadPage: React.FC = () => {
 
     // Validate required fields
     if (!projectName.trim()) {
-      setFlashMessage({ type: 'error', message: 'Please enter a project name' });
+      setFlashMessage({
+        type: "error",
+        message: "Please enter a project name",
+      });
       setIsLoading(false);
       return;
     }
 
-    if (datasetType === 'predefined' && !predefinedDataset) {
-      setFlashMessage({ type: 'error', message: 'Please select a predefined dataset' });
+    if (datasetType === "predefined" && !predefinedDataset) {
+      setFlashMessage({
+        type: "error",
+        message: "Please select a predefined dataset",
+      });
       setIsLoading(false);
       return;
     }
 
-    if (datasetType === 'create' && !generationAlgorithm) {
-      setFlashMessage({ type: 'error', message: 'Please select a generation algorithm' });
+    if (datasetType === "create" && !generationAlgorithm) {
+      setFlashMessage({
+        type: "error",
+        message: "Please select a generation algorithm",
+      });
       setIsLoading(false);
       return;
     }
 
-    if (datasetType === 'custom' && !selectedFile) {
-      setFlashMessage({ type: 'error', message: 'Please select a file to upload' });
+    if (datasetType === "custom" && !selectedFile) {
+      setFlashMessage({
+        type: "error",
+        message: "Please select a file to upload",
+      });
       setIsLoading(false);
       return;
     }
 
     const formData = new FormData();
-    formData.append('learning_type', learningType);
-    formData.append('project_name', projectName);
-    formData.append('dataset_type', datasetType);
+    formData.append("learning_type", learningType);
+    formData.append("project_name", projectName);
+    formData.append("dataset_type", datasetType);
 
     // Handle different dataset types
-    if (datasetType === 'predefined') {
-      formData.append('predefined_dataset', predefinedDataset);
-    } else if (datasetType === 'create') {
-      formData.append('create_algorithm', generationAlgorithm);
+    if (datasetType === "predefined") {
+      formData.append("predefined_dataset", predefinedDataset);
+    } else if (datasetType === "create") {
+      formData.append("create_algorithm", generationAlgorithm);
       // Add algorithm parameters
       Object.entries(algorithmParams).forEach(([key, value]) => {
         formData.append(`param_${key}`, value.toString());
       });
-    } else if (datasetType === 'custom' && selectedFile) {
-      formData.append('dataset', selectedFile);
+    } else if (datasetType === "custom" && selectedFile) {
+      formData.append("dataset", selectedFile);
     }
 
     // Add preprocessing options
-    formData.append('preprocessing', enablePreprocessing ? 'true' : 'false');
+    formData.append("preprocessing", enablePreprocessing ? "true" : "false");
     if (enablePreprocessing) {
       Object.entries(preprocessingOptions).forEach(([key, value]) => {
         if (value) {
-          formData.append('preprocessing_options[]', key);
+          formData.append("preprocessing_options[]", key);
         }
       });
     }
 
     try {
-      const response = await fetch('/project', {
-        method: 'POST',
+      const response = await fetch("http://localhost:5000/project", {
+        method: "POST",
+        // Ne pas définir le header Content-type pour FormData
+        // Le navigateur le définira automatiquement avec la boundary nécessaire
+        credentials: "include",
         body: formData,
       });
 
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const contentType = response.headers.get("content-type");
+      if (!contentType || !contentType.includes("application/json")) {
+        throw new TypeError("Response wasn't JSON");
+      }
+
       const responseData = await response.json();
 
-      if (response.ok) {
-        setFlashMessage({ type: 'success', message: responseData.message || 'Upload successful!' });
+      // Handle successful response
+      if (responseData.status === "success") {
+        setFlashMessage({ type: "success", message: responseData.message });
+        // Handle preview data if exists
+        if (responseData.preview) {
+          setPreviewData(responseData.preview);
+        }
         
-        // Handle redirect based on learning type
-        if (learningType === 'supervised' || learningType === 'unsupervised') {
-          navigate('/select-type');
-        } else if (learningType === 'preprocessing') {
-          navigate('/preprocessing-methods');
+        // Handle redirection if provided by the backend
+        if (responseData.redirect) {
+          // Navigate to the specified route
+          navigate(responseData.redirect);
+          return;
         }
       } else {
-        setFlashMessage({ 
-          type: 'error', 
-          message: responseData.message || 'Upload failed. Please try again.' 
-        });
+        setFlashMessage({ type: "error", message: responseData.message });
       }
     } catch (error) {
-      console.error('Error during upload:', error);
-      setFlashMessage({ 
-        type: 'error', 
-        message: 'An error occurred during upload. Please try again.' 
+      console.error("Upload error:", error);
+      setFlashMessage({
+        type: "error",
+        message:
+          error instanceof Error ? error.message : "Unknown upload error",
       });
     } finally {
       setIsLoading(false);
@@ -325,35 +416,162 @@ const UploadPage: React.FC = () => {
   };
 
   // Algorithm parameters configuration
-  const algorithmParameters: Record<string, Array<{name: string, label: string, type: string, default: number, min?: number, max?: number, step?: number}>> = {
+  const algorithmParameters: Record<
+    string,
+    Array<{
+      name: string;
+      label: string;
+      type: string;
+      default: number;
+      min?: number;
+      max?: number;
+      step?: number;
+    }>
+  > = {
     make_blobs: [
-      { name: 'n_samples', label: 'Number of samples', type: 'number', default: 100, min: 1 },
-      { name: 'n_features', label: 'Number of features', type: 'number', default: 2, min: 1 },
-      { name: 'centers', label: 'Number of centers/clusters', type: 'number', default: 3, min: 1 },
-      { name: 'cluster_std', label: 'Cluster standard deviation', type: 'number', default: 1.0, min: 0.1, step: 0.1 }
+      {
+        name: "n_samples",
+        label: "Number of samples",
+        type: "number",
+        default: 100,
+        min: 1,
+      },
+      {
+        name: "n_features",
+        label: "Number of features",
+        type: "number",
+        default: 2,
+        min: 1,
+      },
+      {
+        name: "centers",
+        label: "Number of centers/clusters",
+        type: "number",
+        default: 3,
+        min: 1,
+      },
+      {
+        name: "cluster_std",
+        label: "Cluster standard deviation",
+        type: "number",
+        default: 1.0,
+        min: 0.1,
+        step: 0.1,
+      },
     ],
     make_moons: [
-      { name: 'n_samples', label: 'Number of samples', type: 'number', default: 100, min: 1 },
-      { name: 'noise', label: 'Noise level', type: 'number', default: 0.1, min: 0.0, max: 1.0, step: 0.05 }
+      {
+        name: "n_samples",
+        label: "Number of samples",
+        type: "number",
+        default: 100,
+        min: 1,
+      },
+      {
+        name: "noise",
+        label: "Noise level",
+        type: "number",
+        default: 0.1,
+        min: 0.0,
+        max: 1.0,
+        step: 0.05,
+      },
     ],
     make_circles: [
-      { name: 'n_samples', label: 'Number of samples', type: 'number', default: 100, min: 1 },
-      { name: 'noise', label: 'Noise level', type: 'number', default: 0.1, min: 0.0, max: 1.0, step: 0.05 },
-      { name: 'factor', label: 'Scale factor between inner and outer circle', type: 'number', default: 0.5, min: 0.1, max: 0.9, step: 0.05 }
+      {
+        name: "n_samples",
+        label: "Number of samples",
+        type: "number",
+        default: 100,
+        min: 1,
+      },
+      {
+        name: "noise",
+        label: "Noise level",
+        type: "number",
+        default: 0.1,
+        min: 0.0,
+        max: 1.0,
+        step: 0.05,
+      },
+      {
+        name: "factor",
+        label: "Scale factor between inner and outer circle",
+        type: "number",
+        default: 0.5,
+        min: 0.1,
+        max: 0.9,
+        step: 0.05,
+      },
     ],
     make_classification: [
-      { name: 'n_samples', label: 'Number of samples', type: 'number', default: 100, min: 1 },
-      { name: 'n_features', label: 'Number of features', type: 'number', default: 20, min: 1 },
-      { name: 'n_informative', label: 'Number of informative features', type: 'number', default: 2, min: 1 },
-      { name: 'n_redundant', label: 'Number of redundant features', type: 'number', default: 2, min: 0 },
-      { name: 'n_classes', label: 'Number of classes', type: 'number', default: 2, min: 2 }
+      {
+        name: "n_samples",
+        label: "Number of samples",
+        type: "number",
+        default: 100,
+        min: 1,
+      },
+      {
+        name: "n_features",
+        label: "Number of features",
+        type: "number",
+        default: 20,
+        min: 1,
+      },
+      {
+        name: "n_informative",
+        label: "Number of informative features",
+        type: "number",
+        default: 2,
+        min: 1,
+      },
+      {
+        name: "n_redundant",
+        label: "Number of redundant features",
+        type: "number",
+        default: 2,
+        min: 0,
+      },
+      {
+        name: "n_classes",
+        label: "Number of classes",
+        type: "number",
+        default: 2,
+        min: 2,
+      },
     ],
     make_regression: [
-      { name: 'n_samples', label: 'Number of samples', type: 'number', default: 100, min: 1 },
-      { name: 'n_features', label: 'Number of features', type: 'number', default: 100, min: 1 },
-      { name: 'n_informative', label: 'Number of informative features', type: 'number', default: 10, min: 1 },
-      { name: 'noise', label: 'Noise level', type: 'number', default: 0.1, min: 0.0, step: 0.05 }
-    ]
+      {
+        name: "n_samples",
+        label: "Number of samples",
+        type: "number",
+        default: 100,
+        min: 1,
+      },
+      {
+        name: "n_features",
+        label: "Number of features",
+        type: "number",
+        default: 100,
+        min: 1,
+      },
+      {
+        name: "n_informative",
+        label: "Number of informative features",
+        type: "number",
+        default: 10,
+        min: 1,
+      },
+      {
+        name: "noise",
+        label: "Noise level",
+        type: "number",
+        default: 0.1,
+        min: 0.0,
+        step: 0.05,
+      },
+    ],
   };
 
   const renderAlgorithmParameters = () => {
@@ -363,11 +581,15 @@ const UploadPage: React.FC = () => {
 
     return (
       <div className="mt-4 p-4 bg-[rgba(255,255,255,0.03)] rounded-md border border-[rgba(255,255,255,0.1)]">
-        <h3 className="text-lg font-medium text-white mb-4">Algorithm Parameters</h3>
+        <h3 className="text-lg font-medium text-white mb-4">
+          Algorithm Parameters
+        </h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {algorithmParameters[generationAlgorithm].map((param) => (
             <FormGroup key={param.name}>
-              <FormLabel htmlFor={`param-${param.name}`}>{param.label}</FormLabel>
+              <FormLabel htmlFor={`param-${param.name}`}>
+                {param.label}
+              </FormLabel>
               <FormInput
                 type="number"
                 id={`param-${param.name}`}
@@ -377,9 +599,9 @@ const UploadPage: React.FC = () => {
                 max={param.max}
                 step={param.step}
                 onChange={(e) => {
-                  setAlgorithmParams(prev => ({
+                  setAlgorithmParams((prev) => ({
                     ...prev,
-                    [param.name]: parseFloat(e.target.value)
+                    [param.name]: parseFloat(e.target.value),
                   }));
                 }}
               />
@@ -395,19 +617,26 @@ const UploadPage: React.FC = () => {
       <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 py-12">
         <div className="container mx-auto px-4 md:px-6">
           {flashMessage && (
-            <div className={`mb-4 p-4 rounded-lg ${
-              flashMessage.type === 'success' ? 'bg-green-500/10 text-green-500 border border-green-500/20' :
-              flashMessage.type === 'error' ? 'bg-red-500/10 text-red-500 border border-red-500/20' :
-              'bg-yellow-500/10 text-yellow-500 border border-yellow-500/20'
-            }`}>
+            <div
+              className={`mb-4 p-4 rounded-lg ${
+                flashMessage.type === "success"
+                  ? "bg-green-500/10 text-green-500 border border-green-500/20"
+                  : flashMessage.type === "error"
+                  ? "bg-red-500/10 text-red-500 border border-red-500/20"
+                  : "bg-yellow-500/10 text-yellow-500 border border-yellow-500/20"
+              }`}
+            >
               {flashMessage.message}
             </div>
           )}
-          
+
           <h1 className="text-3xl font-bold text-white mb-8 text-center">
-            {learningType === 'supervised' && 'Import Dataset - Supervised Learning'}
-            {learningType === 'unsupervised' && 'Import Dataset - Unsupervised Learning'}
-            {learningType === 'preprocessing' && 'Import Dataset - Preprocessing'}
+            {learningType === "supervised" &&
+              "Import Dataset - Supervised Learning"}
+            {learningType === "unsupervised" &&
+              "Import Dataset - Unsupervised Learning"}
+            {learningType === "preprocessing" &&
+              "Import Dataset - Preprocessing"}
           </h1>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -415,14 +644,21 @@ const UploadPage: React.FC = () => {
             <CustomCard className="p-0">
               <CustomCardHeader>
                 <h2 className="text-xl font-semibold text-white">
-                  {learningType === 'supervised' && 'Choose a dataset for Supervised Learning'}
-                  {learningType === 'unsupervised' && 'Choose a dataset for Unsupervised Learning'}
-                  {learningType === 'preprocessing' && 'Choose a dataset for Preprocessing'}
+                  {learningType === "supervised" &&
+                    "Choose a dataset for Supervised Learning"}
+                  {learningType === "unsupervised" &&
+                    "Choose a dataset for Unsupervised Learning"}
+                  {learningType === "preprocessing" &&
+                    "Choose a dataset for Preprocessing"}
                 </h2>
               </CustomCardHeader>
               <CustomCardBody>
                 <Form onSubmit={handleSubmit}>
-                  <input type="hidden" name="learning_type" value={learningType} />
+                  <input
+                    type="hidden"
+                    name="learning_type"
+                    value={learningType}
+                  />
 
                   <div className="mb-6">
                     <div className="space-y-3">
@@ -432,11 +668,14 @@ const UploadPage: React.FC = () => {
                           id="custom-dataset"
                           name="dataset_type"
                           value="custom"
-                          checked={datasetType === 'custom'}
+                          checked={datasetType === "custom"}
                           onChange={handleDatasetTypeChange}
                           className="w-4 h-4 text-primary bg-gray-100 border-gray-300 focus:ring-primary focus:ring-2"
                         />
-                        <label htmlFor="custom-dataset" className="text-gray-light">
+                        <label
+                          htmlFor="custom-dataset"
+                          className="text-gray-light"
+                        >
                           Custom dataset
                         </label>
                       </div>
@@ -446,11 +685,14 @@ const UploadPage: React.FC = () => {
                           id="predefined-dataset"
                           name="dataset_type"
                           value="predefined"
-                          checked={datasetType === 'predefined'}
+                          checked={datasetType === "predefined"}
                           onChange={handleDatasetTypeChange}
                           className="w-4 h-4 text-primary bg-gray-100 border-gray-300 focus:ring-primary focus:ring-2"
                         />
-                        <label htmlFor="predefined-dataset" className="text-gray-light">
+                        <label
+                          htmlFor="predefined-dataset"
+                          className="text-gray-light"
+                        >
                           Predefined dataset
                         </label>
                       </div>
@@ -460,21 +702,26 @@ const UploadPage: React.FC = () => {
                           id="create-dataset"
                           name="dataset_type"
                           value="create"
-                          checked={datasetType === 'create'}
+                          checked={datasetType === "create"}
                           onChange={handleDatasetTypeChange}
                           className="w-4 h-4 text-primary bg-gray-100 border-gray-300 focus:ring-primary focus:ring-2"
                         />
-                        <label htmlFor="create-dataset" className="text-gray-light">
+                        <label
+                          htmlFor="create-dataset"
+                          className="text-gray-light"
+                        >
                           Create dataset
                         </label>
                       </div>
                     </div>
                   </div>
 
-                  {datasetType === 'predefined' && (
+                  {datasetType === "predefined" && (
                     <div className="mb-6">
                       <FormGroup>
-                        <FormLabel htmlFor="predefined-dataset-select">Select a dataset</FormLabel>
+                        <FormLabel htmlFor="predefined-dataset-select">
+                          Select a dataset
+                        </FormLabel>
                         <FormSelect
                           id="predefined-dataset-select"
                           value={predefinedDataset}
@@ -484,14 +731,18 @@ const UploadPage: React.FC = () => {
                           <option value="">Select a dataset</option>
                           <option value="load_iris">Iris Dataset</option>
                           <option value="load_digits">Digits Dataset</option>
-                          <option value="load_diabetes">Diabetes Dataset</option>
-                          <option value="load_breast_cancer">Breast Cancer Dataset</option>
+                          <option value="load_diabetes">
+                            Diabetes Dataset
+                          </option>
+                          <option value="load_breast_cancer">
+                            Breast Cancer Dataset
+                          </option>
                         </FormSelect>
                       </FormGroup>
                       <div className="mt-4">
-                        <CustomButton 
-                          type="button" 
-                          variant="secondary" 
+                        <CustomButton
+                          type="button"
+                          variant="secondary"
                           size="sm"
                           onClick={handlePredefinedDatasetPreview}
                           leftIcon={<i className="ri-eye-line"></i>}
@@ -502,31 +753,47 @@ const UploadPage: React.FC = () => {
                     </div>
                   )}
 
-                  {datasetType === 'create' && (
+                  {datasetType === "create" && (
                     <div className="mb-6 text-slate-950">
                       <FormGroup>
-                        <FormLabel htmlFor="create-algorithm-select">Select a generation algorithm</FormLabel>
+                        <FormLabel htmlFor="create-algorithm-select">
+                          Select a generation algorithm
+                        </FormLabel>
                         <FormSelect
                           id="create-algorithm-select"
                           value={generationAlgorithm}
-                          onChange={(e) => setGenerationAlgorithm(e.target.value)}
-                           className="text-slate-950"
+                          onChange={(e) =>
+                            setGenerationAlgorithm(e.target.value)
+                          }
+                          className="text-slate-950"
                         >
-                          <option value="">Select a generation algorithm</option>
-                          <option value="make_blobs">Make Blobs (clusters)</option>
-                          <option value="make_moons">Make Moons (half circles)</option>
-                          <option value="make_circles">Make Circles (concentric)</option>
-                          <option value="make_classification">Make Classification</option>
-                          <option value="make_regression">Make Regression</option>
+                          <option value="">
+                            Select a generation algorithm
+                          </option>
+                          <option value="make_blobs">
+                            Make Blobs (clusters)
+                          </option>
+                          <option value="make_moons">
+                            Make Moons (half circles)
+                          </option>
+                          <option value="make_circles">
+                            Make Circles (concentric)
+                          </option>
+                          <option value="make_classification">
+                            Make Classification
+                          </option>
+                          <option value="make_regression">
+                            Make Regression
+                          </option>
                         </FormSelect>
                       </FormGroup>
 
                       {renderAlgorithmParameters()}
 
                       <div className="mt-4">
-                        <CustomButton 
-                          type="button" 
-                          variant="secondary" 
+                        <CustomButton
+                          type="button"
+                          variant="secondary"
                           size="sm"
                           onClick={handleGeneratedDatasetPreview}
                           leftIcon={<i className="ri-eye-line"></i>}
@@ -549,8 +816,8 @@ const UploadPage: React.FC = () => {
                     />
                   </FormGroup>
 
-                  {datasetType === 'custom' && (
-                    <div 
+                  {datasetType === "custom" && (
+                    <div
                       ref={dropZoneRef}
                       className="mt-6 border-2 border-dashed border-gray-300 rounded-lg p-8 text-center cursor-pointer transition-all hover:border-primary hover:bg-primary-dark hover:bg-opacity-5"
                       onClick={handleDropZoneClick}
@@ -558,8 +825,12 @@ const UploadPage: React.FC = () => {
                       {!selectedFile ? (
                         <>
                           <i className="ri-upload-cloud-line text-5xl text-primary mb-4 block"></i>
-                          <p className="text-lg font-medium text-gray-light mb-2">Drop your dataset here</p>
-                          <p className="text-sm text-gray-400">or click to browse files</p>
+                          <p className="text-lg font-medium text-gray-light mb-2">
+                            Drop your dataset here
+                          </p>
+                          <p className="text-sm text-gray-400">
+                            or click to browse files
+                          </p>
                           <input
                             ref={fileInputRef}
                             type="file"
@@ -568,24 +839,16 @@ const UploadPage: React.FC = () => {
                             accept=".csv,.xlsx,.json"
                             className="hidden"
                             onChange={handleFileInputChange}
-                            required={datasetType === 'custom'}
+                            required={datasetType === "custom"}
                           />
                         </>
                       ) : (
                         <div className="flex flex-col items-center">
                           <i className="ri-file-excel-2-line text-4xl text-primary mb-3"></i>
-                          <p className="text-md font-medium text-gray-light mb-4 break-all">{selectedFile.name}</p>
-                          {uploadProgress > 0 && uploadProgress < 100 && (
-                            <>
-                              <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden mb-2">
-                                <div 
-                                  className="h-full bg-primary rounded-full" 
-                                  style={{ width: `${uploadProgress}%` }}
-                                ></div>
-                              </div>
-                              <p className="text-sm text-gray-400">{uploadProgress}%</p>
-                            </>
-                          )}
+                          <p className="text-md font-medium text-gray-light mb-4 break-all">
+                            {selectedFile.name}
+                          </p>
+                          
                         </div>
                       )}
                     </div>
@@ -593,46 +856,87 @@ const UploadPage: React.FC = () => {
 
                   <div className="mt-6 flex items-center space-x-3">
                     <div className="relative inline-block w-10 mr-2 align-middle select-none">
-                      <input 
-                        type="checkbox" 
-                        id="preprocessing-toggle" 
+                      <input
+                        type="checkbox"
+                        id="preprocessing-toggle"
                         name="preprocessing"
                         checked={enablePreprocessing}
                         onChange={handlePreprocessingToggle}
                         className="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer transition-transform duration-200 ease-in-out"
                       />
-                      <label 
-                        htmlFor="preprocessing-toggle" 
+                      <label
+                        htmlFor="preprocessing-toggle"
                         className="toggle-label block overflow-hidden h-6 rounded-full bg-gray-300 cursor-pointer"
                       ></label>
                     </div>
-                    <span className="text-gray-light">Enable preprocessing</span>
+                    <span className="text-gray-light">
+                      Enable preprocessing
+                    </span>
                   </div>
 
                   {enablePreprocessing && (
                     <div className="mt-4 p-4 bg-[rgba(255,255,255,0.03)] rounded-md border border-[rgba(255,255,255,0.1)]">
-                      <h3 className="text-lg font-medium text-white mb-4">Preprocessing options</h3>
+                      <h3 className="text-lg font-medium text-white mb-4">
+                        Preprocessing options
+                      </h3>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                         {[
-                          { id: 'normalize', label: 'Normalization (Min-Max Scaling)' },
-                          { id: 'standardize', label: 'Standardization (Z-score)' },
-                          { id: 'missing_values', label: 'Missing values handling' },
-                          { id: 'outliers', label: 'Outlier detection and treatment' },
-                          { id: 'encode_categorical', label: 'Categorical variables encoding' },
-                          { id: 'feature_selection', label: 'Feature selection' },
-                          { id: 'dimensionality_reduction', label: 'Dimensionality reduction' },
-                          { id: 'data_transformation', label: 'Data transformation' },
-                          { id: 'feature_engineering', label: 'Feature engineering' },
-                          { id: 'data_balancing', label: 'Data balancing' }
-                        ].map(option => (
-                          <div key={option.id} className="flex items-center space-x-3">
+                          {
+                            id: "normalize",
+                            label: "Normalization (Min-Max Scaling)",
+                          },
+                          {
+                            id: "standardize",
+                            label: "Standardization (Z-score)",
+                          },
+                          {
+                            id: "missing_values",
+                            label: "Missing values handling",
+                          },
+                          {
+                            id: "outliers",
+                            label: "Outlier detection and treatment",
+                          },
+                          {
+                            id: "encode_categorical",
+                            label: "Categorical variables encoding",
+                          },
+                          {
+                            id: "feature_selection",
+                            label: "Feature selection",
+                          },
+                          {
+                            id: "dimensionality_reduction",
+                            label: "Dimensionality reduction",
+                          },
+                          {
+                            id: "data_transformation",
+                            label: "Data transformation",
+                          },
+                          {
+                            id: "feature_engineering",
+                            label: "Feature engineering",
+                          },
+                          { id: "data_balancing", label: "Data balancing" },
+                        ].map((option) => (
+                          <div
+                            key={option.id}
+                            className="flex items-center space-x-3"
+                          >
                             <FormCheckbox
                               id={option.id}
                               name={option.id}
-                              checked={preprocessingOptions[option.id as keyof typeof preprocessingOptions]}
+                              checked={
+                                preprocessingOptions[
+                                  option.id as keyof typeof preprocessingOptions
+                                ]
+                              }
                               onChange={handlePreprocessingOptionChange}
                             />
-                            <label htmlFor={option.id} className="text-gray-light text-sm">
+                            <label
+                              htmlFor={option.id}
+                              className="text-gray-light text-sm"
+                            >
                               {option.label}
                             </label>
                           </div>
@@ -642,8 +946,8 @@ const UploadPage: React.FC = () => {
                   )}
 
                   <div className="mt-8">
-                    <CustomButton 
-                      type="submit" 
+                    <CustomButton
+                      type="submit"
                       className="w-full"
                       leftIcon={<i className="ri-upload-cloud-line"></i>}
                     >
@@ -657,7 +961,9 @@ const UploadPage: React.FC = () => {
             {/* Dataset Preview Container */}
             <CustomCard className="p-0">
               <CustomCardHeader>
-                <h2 className="text-xl font-semibold text-white">Dataset Preview</h2>
+                <h2 className="text-xl font-semibold text-white">
+                  Dataset Preview
+                </h2>
               </CustomCardHeader>
               <CustomCardBody>
                 {isLoading ? (
@@ -671,7 +977,7 @@ const UploadPage: React.FC = () => {
                       <thead>
                         <tr>
                           {previewData.columns.map((column, index) => (
-                            <th 
+                            <th
                               key={index}
                               className="px-6 py-3 bg-[rgba(255,255,255,0.05)] text-left text-xs font-medium text-gray-300 uppercase tracking-wider"
                             >
@@ -682,9 +988,12 @@ const UploadPage: React.FC = () => {
                       </thead>
                       <tbody className="divide-y divide-gray-700 bg-[rgba(255,255,255,0.02)]">
                         {previewData.data.map((row, rowIndex) => (
-                          <tr key={rowIndex} className="hover:bg-[rgba(255,255,255,0.05)]">
+                          <tr
+                            key={rowIndex}
+                            className="hover:bg-[rgba(255,255,255,0.05)]"
+                          >
                             {row.map((cell, cellIndex) => (
-                              <td 
+                              <td
                                 key={cellIndex}
                                 className="px-6 py-4 whitespace-nowrap text-sm text-gray-300"
                               >
@@ -708,7 +1017,7 @@ const UploadPage: React.FC = () => {
         </div>
       </div>
 
-      <style >{`
+      <style>{`
         .toggle-checkbox:checked {
           transform: translateX(100%);
           border-color: var(--primary);
