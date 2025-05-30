@@ -8,9 +8,9 @@ interface LayoutProps {
 }
 
 const Layout: React.FC<LayoutProps> = ({ children, showFooter = true }) => {
+
   return (
-    <div className="flex flex-col min-h-screen">
-      <Navbar />
+ <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-500 to-slate-200">      <Navbar />
       <main className="flex-grow">
         {children}
       </main>

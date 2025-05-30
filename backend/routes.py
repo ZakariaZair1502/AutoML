@@ -110,6 +110,7 @@ with app.app_context():
 def allowed_file(filename):
     return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
 
+
 @app.route("/preview_custom", methods=["POST"])
 def upload_dataset_preview():
     if "dataset" not in request.files:
@@ -139,7 +140,6 @@ def upload_dataset_preview():
         return jsonify({"preview": preview}), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
-
 
 
 # Routes API pour la prévisualisation des datasets
@@ -508,7 +508,7 @@ def register():
     )
 
 
-@   app.route("/project", methods=["GET", "POST"])
+@app.route("/project", methods=["GET", "POST"])
 def upload():
     try:
         # Authentication check
@@ -990,7 +990,7 @@ def get_algorithm_doc():
                         short_desc += " " + line.strip()
                     if len(short_desc) > 100:  # Limiter la longueur
                         break
-
+        print(params)
         return jsonify(
             {"doc": doc, "parameters": params, "short_description": short_desc}
         )
@@ -1002,6 +1002,8 @@ def get_algorithm_doc():
 def select_type():
     # Vérifier si l'utilisateur est connecté
     if "user_id" not in session:
+        if request.is_json:
+            return jsonify({"error": "Unauthorized"}), 401
         flash("Veuillez vous connecter pour sélectionner un type de modèle.", "warning")
         return redirect(url_for("login"))
 
@@ -1010,26 +1012,32 @@ def select_type():
     # Récupérer le type d'apprentissage depuis la session
     learning_type = session.get("learning_type", "supervised")
     if request.method == "POST":
-        model_type = request.form.get("model_type")
-        algo = request.form.get("algo")
+        if request.is_json:
+            data = request.get_json()
+            model_type = data.get("model_type")
+            algo = data.get("algo")
+            algorithm_parameters = data.get("algorithm_parameters", "{}")
+        else:
+            model_type = request.form.get("model_type")
+            algo = request.form.get("algo")
+            algorithm_parameters = request.form.get("algorithm_parameters", "{}")
         session["algo"] = algo
         session["model_type"] = model_type
         filename = session.get("filename")
         project_name = session.get("project_name")
         if not model_type:
+            if request.is_json:
+                return (
+                    jsonify({"error": "Veuillez sélectionner un type de modèle."}),
+                    400,
+                )
             flash("Veuillez sélectionner un type de modèle.", "error")
-            return redirect(request.url)  # Recharge la page avec le message d'erreur
-
-        # Récupérer les paramètres d'algorithme sélectionnés
-        algorithm_parameters = request.form.get("algorithm_parameters", "{}")
+            return redirect(request.url)
 
         try:
-            # Convertir la chaîne JSON en dictionnaire Python
             algorithm_parameters_dict = json.loads(algorithm_parameters)
             algorithm_parameters_raw = algorithm_parameters_dict.get("parameters", {})
             print(algorithm_parameters_raw)
-            # Stocker les paramètres dans la session et le cache global
-            ################################
             params_filename = (
                 f"{project_name}_{filename}_{algo}_algorithm_parameters.pkl"
             )
@@ -1040,46 +1048,31 @@ def select_type():
             params_path = os.path.join(params_folder, params_filename)
             jb.dump(algorithm_parameters_raw, params_path)
             session["algorithm_params_path"] = params_path
-
-            #################################
         except json.JSONDecodeError:
             session["algorithm_parameters"] = {}
             algorithm_parameters_cache[algo] = {}
-
-        # Rediriger vers la page de sélection des caractéristiques appropriée
-        return redirect(url_for("select_features"))
-
-    # Choisir le template en fonction du type d'apprentissage
-    template = "select_type.html"
-    project_name = session.get("project_name")
-    filename = session.get("filename")
-    return render_template(
-        template,
-        project_name=project_name,
-        filename=filename,
-        learning_type=learning_type,
-    )
+        if request.is_json:
+            return jsonify({"success": True, "redirect": url_for("select_features")})
 
 
 @app.route("/select_features", methods=["GET", "POST"])
 def select_features():
-    # Vérifier si l'utilisateur est connecté
+    # Authentication check
     if "user_id" not in session:
+        if request.is_json or request.method == "POST":
+            return jsonify({"error": "Unauthorized"}), 401
         flash(
             "Veuillez vous connecter pour sélectionner des caractéristiques.", "warning"
         )
         return redirect(url_for("login"))
 
     user_id = session["user_id"]
-
-    # Récupérer le type d'apprentissage depuis la session
     learning_type = session.get("learning_type", "supervised")
     filename = session.get("filename")
     project_name = session.get("project_name")
     model_type = session.get("model_type")
     algo = session.get("algo")
 
-    # Utiliser le dossier spécifique à l'utilisateur
     user_folder = os.path.join(current_app.config["UPLOAD_FOLDER"], f"user_{user_id}")
     filepath = os.path.join(user_folder, project_name, "datasets", filename)
     data = pd.read_csv(filepath)
@@ -1090,11 +1083,72 @@ def select_features():
         algo_class = unsupervised_models.ALGORITHMS[algo]
     algo_class = algo_class()
     algorithm_parameters = session.get("algorithm_parameters", {})
-    print(algorithm_parameters)
     params_dict = algo_class.get_params()
     session["params_dict"] = params_dict
+
+    if request.method == "GET":
+        # Support JSON GET for React frontend
+        if request.is_json or request.headers.get("Content-Type") == "application/json":
+            features = data.columns.tolist()
+            stats = numeric_data.describe().transpose().to_dict(orient="index")
+            print(features)
+            return jsonify(
+                {
+                    "model_info": {
+                        "filename": filename,
+                        "project_name": project_name,
+                        "model_type": model_type,
+                        "algo": algo,
+                        "learning_type": learning_type,
+                    },
+                    "features": features,
+                    "stats": stats,
+                    "model_type": model_type,
+                    "algo": algo,
+                    "learning_type": learning_type,
+                }
+            )
+        # Fallback to template rendering for legacy
+        features = data.columns.tolist()
+        stats = numeric_data.describe().transpose()
+        stats_dict = stats.to_dict(orient="index")
+        return jsonify(
+            {
+                "features": features,
+                "stats": stats,
+                "model_type": model_type,
+                "algo": algo,
+                "learning_type": learning_type,
+            }
+        )
+
     if request.method == "POST":
-        # Get the updated features list and target feature from the form
+        # Support JSON POST for React frontend
+        if request.is_json or request.headers.get("Content-Type") == "application/json":
+            data_json = request.get_json()
+            selected_features = (
+                data_json.get("selected_features", "").split(",")
+                if isinstance(data_json.get("selected_features", ""), str)
+                else data_json.get("selected_features", [])
+            )
+            session["selected_features"] = selected_features
+            if learning_type == "supervised":
+                target_feature = data_json.get("target_feature")
+                if target_feature and target_feature in selected_features:
+                    selected_features.remove(target_feature)
+                session["target_feature"] = target_feature
+                session["selected_features"] = selected_features
+                if not target_feature:
+                    return (
+                        jsonify(
+                            {"error": "Veuillez sélectionner une fonctionnalité cible."}
+                        ),
+                        400,
+                    )
+                return jsonify({"success": True, "redirect": url_for("train_model")})
+            else:
+                return jsonify({"success": True, "redirect": url_for("train_model")})
+        # Fallback to form POST for legacy
         selected_features = request.form.get("selected_features", "").split(",")
         session["selected_features"] = selected_features
         if learning_type == "supervised":
@@ -1106,64 +1160,65 @@ def select_features():
             if not target_feature:
                 flash("Veuillez sélectionner une fonctionnalité cible.", "error")
                 return redirect(request.url)
-
             return redirect(url_for("train_model"))
-        else:  # unsupervised
+        else:
             return redirect(url_for("train_model"))
-
-    # For GET requests, show all features
-    features = data.columns.tolist()
-    stats = numeric_data.describe().transpose()
-    stats_dict = stats.to_dict(orient="index")
-
-    # Choisir le template en fonction du type d'apprentissage
-    template = "select_features.html"
-
-    return render_template(
-        template,
-        project_name=project_name,
-        filename=filename,
-        model_type=model_type,
-        features=features,
-        stats=stats_dict,
-        algo=algo,
-        learning_type=learning_type,
-        params_dict=params_dict,
-    )
 
 
 @app.route("/train_model", methods=["GET"])
 def train_model():
-    # Vérifier si l'utilisateur est connecté
+    # Authentication check
     if "user_id" not in session:
-        flash("Veuillez vous connecter pour entraîner un modèle.", "warning")
-        return redirect(url_for("login"))
+        return jsonify({"success": False, "error": "Authentication required."}), 401
 
     user_id = session["user_id"]
-
-    # Récupérer le type d'apprentissage depuis la session
     learning_type = session.get("learning_type", "supervised")
     algo = session.get("algo")
     model_type = session.get("model_type")
     project_name = session.get("project_name")
     filename = session.get("filename")
-
-    # Utiliser le dossier spécifique à l'utilisateur
     user_folder = os.path.join(current_app.config["UPLOAD_FOLDER"], f"user_{user_id}")
     project_folder = os.path.join(user_folder, project_name, "datasets")
     filepath = os.path.join(project_folder, filename)
-    if learning_type == "supervised":
-        target_feature = session.get("target_feature")
     selected_features = session.get("selected_features")
     algorithm_params_path = session.get("algorithm_params_path")
-    algorithm_parameters = jb.load(algorithm_params_path)
     preprocessing_enabled = session.get("preprocessing_enabled", False)
     preprocessing_options = session.get("preprocessing_options", [])
 
+    # Validate required session data
+    missing = []
+    for key in [
+        "algo",
+        "model_type",
+        "project_name",
+        "filename",
+        "selected_features",
+        "algorithm_params_path",
+    ]:
+        if not session.get(key):
+            missing.append(key)
+    if missing:
+        return (
+            jsonify(
+                {
+                    "success": False,
+                    "error": f"Missing session data: {', '.join(missing)}",
+                }
+            ),
+            400,
+        )
+
     try:
+        algorithm_parameters = jb.load(algorithm_params_path)
         if learning_type == "supervised":
-            print("not trained")
-            # Entraînement du modèle avec la fonctionnalité cible, les paramètres personnalisés et les options de prétraitement
+            target_feature = session.get("target_feature")
+            if not target_feature:
+                return (
+                    jsonify(
+                        {"success": False, "error": "Target feature not selected."}
+                    ),
+                    400,
+                )
             md, params = supervised_models.model_train(
                 filepath,
                 algo,
@@ -1173,36 +1228,30 @@ def train_model():
                 preprocessing_enabled=preprocessing_enabled,
                 preprocessing_options=preprocessing_options,
             )
-            # Sauvegarde du modèle
-            print("trained")
             model_folder = os.path.join(user_folder, project_name, "models")
             os.makedirs(model_folder, exist_ok=True)
             model_path = os.path.join(model_folder, f"{algo}_model.pkl")
             jb.dump(md, model_path)
-
-            # Store the path to the saved model in the params dictionary
             params["model_path"] = model_path
-            # Load the model from disk for predictions
             model = jb.load(model_path)
             params_filename = f"{project_name}_{filename}_{algo}_params.pkl"
             params_folder = os.path.join(
-                UPLOAD_FOLDER, f"user_{user_id}", project_name, "params"
+                current_app.config["UPLOAD_FOLDER"],
+                f"user_{user_id}",
+                project_name,
+                "params",
             )
             os.makedirs(params_folder, exist_ok=True)
             params_path = os.path.join(params_folder, params_filename)
             jb.dump(params, params_path)
             session["params_path"] = params_path
-            X_test = params["X_test"]
+            X_test = params.get("X_test")
             if "X_train_columns" in params and params["X_train_columns"] is not None:
                 X_test = pd.DataFrame(X_test, columns=params["X_train_columns"])
-            else:
-                X_test = np.array(X_test) if isinstance(X_test, list) else X_test
-
             predictions = model.predict(X_test)[:20]
             if isinstance(predictions, pd.DataFrame):
                 predictions = predictions.values.tolist()
-            session["X_train_columns"] = params["X_train_columns"]
-            values = params["y_test"][:20]
+            values = params.get("y_test", [])[:20]
             if isinstance(values, pd.DataFrame):
                 values = values.values.tolist()
             predictions_values = list(zip(predictions, values))
@@ -1215,41 +1264,27 @@ def train_model():
                 preprocessing_enabled=preprocessing_enabled,
                 preprocessing_options=preprocessing_options,
             )
-
-            # Sauvegarde du modèle
             model_folder = os.path.join(user_folder, project_name, "models")
             os.makedirs(model_folder, exist_ok=True)
             model_path = os.path.join(model_folder, f"{algo}_model.pkl")
             jb.dump(md, model_path)
-
-            # Store the path to the saved model in the params dictionary
             params["model_path"] = model_path
-
-            # Load the model from disk for predictions
             model = jb.load(model_path)
-
-            # Store the model back in params for use in the template
             params_filename = f"{project_name}_{filename}_{algo}_params.pkl"
             params_folder = os.path.join(
-                UPLOAD_FOLDER, f"user_{user_id}", project_name, "params"
+                current_app.config["UPLOAD_FOLDER"],
+                f"user_{user_id}",
+                project_name,
+                "params",
             )
             os.makedirs(params_folder, exist_ok=True)
             params_path = os.path.join(params_folder, params_filename)
             jb.dump(params, params_path)
             session["params_path"] = params_path
-
-            # Extraction des prédictions et des valeurs réelles
-            X_scaled = params["X_scaled"]
+            X_scaled = params.get("X_scaled")
             if "X_train_columns" in params and params["X_train_columns"]:
                 X_scaled = pd.DataFrame(X_scaled, columns=params["X_train_columns"])
-            else:
-                X_scaled = (
-                    np.array(X_scaled) if isinstance(X_scaled, list) else X_scaled
-                )
-
-            # Utiliser les labels stockés dans params plutôt que d'accéder directement à model.labels_
-            # car certains modèles n'ont pas cet attribut
-            labels = params["labels"]
+            labels = params.get("labels", [])
             predictions = unsupervised_models.predict_cluster(
                 model, X_scaled, X_scaled, labels
             )[:20]
@@ -1258,45 +1293,47 @@ def train_model():
                 if isinstance(predictions, np.ndarray)
                 else predictions
             )
-            values = params["labels"][:20]
+            values = labels[:20]
             values = values.tolist() if isinstance(values, np.ndarray) else values
             predictions_values = list(zip(predictions, values))
-            # Utilisation de list() pour éviter des erreurs d'affichage
-
     except ValueError as e:
-        return render_template("error.html", error=f"Erreur d'entraînement : {str(e)}")
+        return jsonify({"success": False, "error": f"Training error: {str(e)}"}), 400
     except Exception as e:
-        return render_template(
-            "error.html", error=f"Une erreur inattendue s'est produite : {str(e)}"
-        )
+        return jsonify({"success": False, "error": f"Unexpected error: {str(e)}"}), 500
 
-    return render_template(
-        "results.html",
-        project_name=project_name,
-        filename=filename,
-        model_type=model_type,
-        algo=algo,
-        features=selected_features,
-        predictions_values=predictions_values,
-        params_dict=algorithm_parameters,
-        preprocessing_options=preprocessing_options,
-        learning_type=learning_type,
+    model_info = {
+        "filename": filename,
+        "project_name": project_name,
+        "model_type": model_type,
+        "algo": algo,
+        "learning_type": learning_type,
+        "features": selected_features,
+        "predictions_values": predictions_values,
+        "params_dict": algorithm_parameters,
+        "preprocessing_options": preprocessing_options,
+    }
+    session['model_info'] = model_info
+    return jsonify(
+        {
+            "success": True,
+            "model_info": model_info,
+            "redirect": url_for("select_features"),
+        }
     )
 
 
-@app.route("/api/evaluate", methods=["GET", "POST"])
+@app.route("/evaluate", methods=["GET", "POST"])
 def evaluate():
     # Vérifier si l'utilisateur est connecté
     if "user_id" not in session:
         flash("Veuillez vous connecter pour évaluer un modèle.", "warning")
-        return redirect(url_for("login"))
-
+        return jsonify({"success" : False ,"error": "Unauthorized"}), 401
+    model_info = session.get("model_info", {})
     user_id = session["user_id"]
-    project_name = session.get("project_name")
-    algo = session.get("algo")
-    model_type = session.get("model_type")
-    filename = session.get("filename")
-    learning_type = session.get("learning_type", "supervised")
+    project_name = model_info.get("project_name")
+    algo = model_info.get("algo")
+    filename = model_info.get("filename")
+    learning_type = model_info.get("learning_type", "supervised")
     if not project_name or not filename:
         error = "Veuillez sélectionner un projet et un fichier CSV."
     elif not algo:
@@ -1330,22 +1367,15 @@ def evaluate():
             jb.dump(params, params_path)
             session["params_path"] = params_path
             metrics = params["metrics"]
-            return render_template(
-                "evaluate.html",
-                project_name=project_name,
-                algo=algo,
-                filename=filename,
-                model_type=model_type,
-                metrics=metrics,
-                learning_type=learning_type,
-            )
+
+            return jsonify({"success" : True, "metrics" : metrics})
 
         except ValueError as e:
             error = str(e)
         except Exception as e:
             error = f"Une erreur s'est produite: {str(e)}"
 
-    return render_template("error.html", error=error)
+    return jsonify({"success": True, "error": error})
 
 
 @app.route("/save", methods=["POST"])
@@ -1417,9 +1447,14 @@ def plot_results():
     params_path = session.get("params_path")
     params = jb.load(params_path)
     if not params:
-        return render_template("error.html", error="Modèle non entraîné.")
+        return jsonify({"success": False, "error": "No parameters found."}), 400
     if not project_name or not filename or not algo:
-        return render_template("error.html", error="Informations manquantes.")
+        return jsonify(
+            {
+                "success": False,
+                "error": "Project name, filename, and algorithm are required.",
+            }
+        )
 
     # Initialize variables for interactive plot data
     plot_data = {}
@@ -1644,11 +1679,14 @@ def plot_results():
 
     plot_data_json = json.dumps(plot_data)
 
-    return render_template(
-        "plot_results.html",
-        img_path=img_path,
-        plot_data=plot_data_json,
-        plot_title=plot_title,
+    return jsonify(
+        {
+            "success": True,
+            "plot_data": plot_data_json,
+            "plot_title": plot_title,
+            "img_path": img_path,
+            "redirect_url" : "/plot_results"
+        }
     )
 
 
@@ -2448,18 +2486,18 @@ def preprocessing_report():
     return send_file(report_file_path)
 
 
-@app.route("/predict_page")
+@app.route("/predict_page", methods = ['POST','GET'])
 def predict_page():
     # Vérifier si l'utilisateur est connecté
     if "user_id" not in session:
         flash("Veuillez vous connecter pour faire une prédiction.", "warning")
-        return redirect(url_for("login"))
-
-    filename = request.args.get("filename")
-    algo = request.args.get("algo")
-    project_name = request.args.get("project_name")
-    model_type = request.args.get("model_type")
-    learning_type = request.args.get("learning_type")
+        return jsonify({"success": False, "error": "Veuillez vous connecter."})
+    data = request.get_json()
+    filename = data.get("filename")
+    algo = data.get("algo")
+    project_name = data.get("project_name")
+    model_type = data.get("model_type")
+    learning_type = data.get("learning_type")
     user_id = session.get("user_id", "")
     params_folder = os.path.join(
         UPLOAD_FOLDER, f"user_{user_id}", project_name, "params"
@@ -2473,19 +2511,26 @@ def predict_page():
         features = params.get("X_columns", [])
 
     if not all([filename, algo, project_name, model_type, learning_type]):
-        return render_template(
-            "error.html", error="Informations manquantes pour la prédiction."
+        return (
+            jsonify(
+                {
+                    "success": False,
+                    "error": "Informations manquantes pour la prédiction.",
+                }
+            ),
+            400,
         )
 
-    return render_template(
-        "predict.html",
-        filename=filename,
-        algo=algo,
-        project_name=project_name,
-        model_type=model_type,
-        learning_type=learning_type,
-        features=features,
-    )
+    model_info = {
+        "project_name": project_name,
+        "filename": filename,
+        "algo": algo,
+        "model_type": model_type,
+        "learning_type": learning_type,
+        "features": features,
+    }
+
+    return jsonify({"success": True, "model_info": model_info })
 
 
 @app.route("/predict", methods=["POST"])
@@ -2498,12 +2543,16 @@ def predict():
     user_id = session["user_id"]
 
     # Récupérer les informations du formulaire
-    project_name = request.form.get("project_name")
-    filename = request.form.get("filename")
-    algo = request.form.get("algo")
-    model_type = request.form.get("model_type")
-    learning_type = request.form.get("learning_type")
+    data = request.get_json()
+    project_name = data.get("project_name")
+    filename = data.get("filename")
+    algo = data.get("algo")
+    model_type = data.get("model_type")
+    learning_type = data.get("learning_type")
     dataset_type = session.get("dataset_type")
+    features = data.get("features")
+    input_values = data.get("input_values")
+    print("input_values : ", input_values)
 
     if not project_name or not filename or not algo or not model_type:
         return render_template(
@@ -2511,17 +2560,14 @@ def predict():
         )
 
     # Récupérer les valeurs des caractéristiques depuis le formulaire
-    input_values = {}
-    for key, value in request.form.items():
-        print(key, value)
-        if key.startswith("feature_"):
-            feature_name = key.replace("feature_", "", 1)
-            print("feature_name : ", feature_name)  # Enlève le préfixe
-            try:
-                input_values[feature_name] = float(value)
-            except ValueError:
-                input_values[feature_name] = value
-        print(input_values)
+    processed_inputs = {}
+    for feature in features:
+        val = input_values.get(feature)
+        try:
+            processed_inputs[feature] = float(val)
+        except (ValueError, TypeError):
+            processed_inputs[feature] = val 
+    print(processed_inputs)
     try:
         # Charger le modèle
         model_folder = os.path.join(
@@ -2533,7 +2579,12 @@ def predict():
         model_path = os.path.join(model_folder, f"{algo}_model.pkl")
 
         if not os.path.exists(model_path):
-            return render_template("error.html", error="Le modèle n'a pas été trouvé.")
+            return jsonify(
+                {
+                    "success": False,
+                    "error": "Le modèle n'a pas été trouvé. Veuillez réessayer.",
+                }
+            )
 
         model = jb.load(model_path)
 
@@ -2547,11 +2598,11 @@ def predict():
 
         # Préparer les données d'entrée pour la prédiction
         if learning_type == "supervised":
-            expected_columns = params.get("X_train_columns", list(input_values.keys()))
+            expected_columns = params.get("X_train_columns", list(processed_inputs.keys()))
         else:
-            expected_columns = params.get("X_columns", list(input_values.keys()))
+            expected_columns = params.get("X_columns", list(processed_inputs.keys()))
         print(expected_columns)
-        input_data = [input_values[feature] for feature in expected_columns]
+        input_data = [processed_inputs[feature] for feature in expected_columns]
 
         # Créer un DataFrame avec les données d'entrée
         input_df = pd.DataFrame([input_data], columns=expected_columns)
@@ -2564,14 +2615,15 @@ def predict():
         # Pour les modèles non supervisés, utiliser notre fonction predict_cluster
         if learning_type == "unsupervised":
             # Importer la fonction predict_cluster depuis unsupervised_models
-            from app.unsupervised_models import predict_cluster
 
             # Récupérer les données d'entraînement et les labels si disponibles
             X_scaled = params.get("X_scaled", None)
             labels = params.get("labels", None)
 
             # Utiliser notre fonction personnalisée pour prédire le cluster
-            prediction = predict_cluster(model, input_df.values, X_scaled, labels)
+            prediction = unsupervised_models.predict_cluster(
+                model, input_df.values, X_scaled, labels
+            )
             prediction_result = prediction[0]
 
             # Si la prédiction est -1 (bruit), afficher un message plus clair
@@ -2593,29 +2645,32 @@ def predict():
 
         # Stocker les valeurs d'entrée et le résultat dans la session pour l'affichage
         print(prediction_result)
-        print(input_values)
-        session["input_values"] = input_values
+        print(processed_inputs)
+        session["input_values"] = processed_inputs
         session["prediction_result"] = prediction_result
         session["features"] = expected_columns
-
+        model_info = {
+            "project_name": project_name,
+            "filename": filename,
+            "algo": algo,
+            "model_type": model_type,
+            "learning_type": learning_type,
+            "features": expected_columns,  
+            "input_values":processed_inputs,
+            "prediction_result":prediction_result,
+            "params_dict": params.get("algorithm_parameters", {})
+        }
         # Rediriger vers la page des résultats avec les informations de prédiction
-        return render_template(
-            "predict.html",
-            project_name=project_name,
-            filename=filename,
-            algo=algo,
-            model_type=model_type,
-            features=expected_columns,
-            input_values=input_values,
-            prediction_result=prediction_result,
-            learning_type=learning_type,
-            params_dict=params.get("algorithm_parameters", {}),
+        return jsonify(
+            {
+                "success": True,
+                "prediction": prediction_result,
+                "model_info": model_info,
+            }
         )
 
     except Exception as e:
-        return render_template(
-            "error.html", error=f"Erreur lors de la prédiction: {str(e)}"
-        )
+        jsonify({"success": False, "error": str(e)})
 
 
 @app.route("/error", methods=["POST", "GET"])

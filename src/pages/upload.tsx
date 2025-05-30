@@ -27,7 +27,7 @@ const UploadPage: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const [learningType, setLearningType] = useState<string>("supervised");
+  const [learningType, setLearningType] = useState<string>("");
   const [datasetType, setDatasetType] = useState<string>("custom");
   const [predefinedDataset, setPredefinedDataset] = useState<string>("");
   const [generationAlgorithm, setGenerationAlgorithm] = useState<string>("");
@@ -393,7 +393,7 @@ const UploadPage: React.FC = () => {
         if (responseData.preview) {
           setPreviewData(responseData.preview);
         }
-        
+        localStorage.setItem("learning_type", learningType);
         // Handle redirection if provided by the backend
         if (responseData.redirect) {
           // Navigate to the specified route
