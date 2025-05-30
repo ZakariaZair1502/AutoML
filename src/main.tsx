@@ -11,7 +11,7 @@ import Dashboard from '@/pages/dashboard'
 import Login from '@/pages/Login'
 import Register from '@/pages/register'
 import Results from '@/pages/Results'
-import App from '@/pages/home'
+import Home from '@/pages/home'
 import UploadPage from '@/pages/upload'
 import Prediction from '@/pages/Prediction'
 import FeatureSelection from '@/pages/FeatureSelection'
@@ -32,7 +32,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
         <Route path="/select_type" element={<SelectType/>} />
         <Route path="/evaluate" element={<Evaluation/>} />
         <Route path="/results" element={<Results />} />
-        <Route path="/home" element={<App />} />
+        <Route path="/home" element={<Home />} />
         <Route path="/register" element={<Register />} />
         <Route path="/predict" element={<Prediction />} />
         <Route path="/select_features" element={<FeatureSelection />} />

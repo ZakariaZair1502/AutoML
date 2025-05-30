@@ -38,7 +38,7 @@ const REGRESSION_ALGORITHMS = {
 };
 
 const CLUSTERING_ALGORITHMS: { [key: string]: { [key: string]: string } } = {
-  partition: { "K-Means": "K-Means" },
+  partition: { "KMeans": "K-Means" },
   density: { DBSCAN: "DBSCAN", OPTICS: "OPTICS", HDBSCAN: "HDBSCAN" },
   hierarchical: { Agglomerative: "Agglomerative", BIRCH: "BIRCH" },
   model: { GMM: "GMM" },
@@ -477,7 +477,8 @@ const AlgorithmSelection: React.FC = () => {
     } else if (modelType in CLUSTERING_ALGORITHMS) {
       setAlgorithmOptions(CLUSTERING_ALGORITHMS[modelType]);
     } else {
-      setAlgorithmOptions({});
+      console.warn("Modèle inconnu :", modelType);
+      setAlgorithmOptions({});  // Valeur de repli sûre
     }
     setAlgorithm("");
     setParameters({});
@@ -520,15 +521,17 @@ const AlgorithmSelection: React.FC = () => {
     }
   }, [algorithm, modelType]);
   const setParams = () => {
+    console.log(modelType)
     if (modelType === 'classification') {
+      console.log(modelType)
       setParameters(CLASSIFICATION_MODEL_CONFIGS[algorithm]?.parameters || {});
     } else if (modelType === 'regression') {
       setParameters(REGRESSION_MODEL_CONFIGS[algorithm]?.parameters || {});
-    } else if (modelType in CLUSTERING_MODEL_CONFIGS) {
-      setParameters(CLUSTERING_MODEL_CONFIGS[algorithm]?.parameters || {});
     } else {
-      setParameters({});
-    }
+      console.log(algorithm)
+      setParameters(CLUSTERING_MODEL_CONFIGS[algorithm]?.parameters || {});
+      console.log(parameters)
+    } 
     setShowParams(!!algorithm);
   }
   const handleParamCheckbox = (paramName: string, isChecked: boolean) => {
@@ -636,7 +639,7 @@ const AlgorithmSelection: React.FC = () => {
                     <option value="" disabled>
                       Choose an algorithm
                     </option>
-                    {Object.entries(algorithmOptions).map(([value, label]) => (
+                    {algorithmOptions && Object.entries(algorithmOptions).map(([value, label]) => (
                       <option key={value} value={value} className="bg-slate-800">
                         {label}
                       </option>

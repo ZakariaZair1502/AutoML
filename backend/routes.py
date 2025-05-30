@@ -228,18 +228,12 @@ def login():
     data = request.get_json()
     username = data.get("username")
     password = data.get("password")
-    print("user entred : ", username)
-    print("pass entred : ", password)
+
 
     # Check if user exists in the database
     user = User.query.filter_by(username=username).first()
-    print("user : ", user.username)
-    print("passs : ", user.password)
     if user and check_password_hash(user.password, password):
-        print("user : ", user.username)
-        print("passs : ", user.password)
         session["user_id"] = user.username
-        print(session["user_id"])
         flash("Login successful!", "success")
         return (
             jsonify(
@@ -528,7 +522,6 @@ def upload():
             # FormData submission
             learning_type = request.form.get("learning_type")
             project_name = request.form.get("project_name")
-            print(project_name)
             dataset_type = request.form.get("dataset_type")
             predefined_dataset = request.form.get("predefined_dataset")
             generation_algorithm = request.form.get(
@@ -542,7 +535,6 @@ def upload():
             # JSON submission
             data = request.get_json()
             if data:
-                print(data)
                 learning_type = data.get("learning_type")
                 project_name = data.get("project_name")
                 dataset_type = data.get("dataset_type")
@@ -688,7 +680,6 @@ def upload():
                 "load_diabetes": datasets.load_diabetes,
                 "load_breast_cancer": datasets.load_breast_cancer,
             }.get(predefined_dataset)
-            print(dataset_loader)
 
             if not dataset_loader:
                 return (
@@ -707,7 +698,6 @@ def upload():
                 df["target"] = data.target
 
                 filename = f"{predefined_dataset}.csv"
-                print(filename)
                 file_path = os.path.join(project_folder, "datasets", filename)
                 df.to_csv(file_path, index=False)
 
@@ -783,7 +773,6 @@ def upload():
                 "make_classification": make_classification,
                 "make_regression": make_regression,
             }
-            print("generation algorithm : ", generation_algorithm)
 
             if not generators.get(generation_algorithm):
                 return (
@@ -804,15 +793,11 @@ def upload():
                     "make_circles",
                     "make_classification",
                 ]:
-                    print(algorithm_params)
                     algorithm_params = {
                         k: int(v) if isinstance(v, float) and v.is_integer() else v
                         for k, v in algorithm_params.items()
                     }
-                    print(algorithm_params)
-                    print("before")
                     X, y = generators[generation_algorithm](**algorithm_params)
-                    print("after")
                     df = pd.DataFrame(X)
                     df["target"] = y
                 elif generation_algorithm == "make_regression":
@@ -821,11 +806,9 @@ def upload():
                     df["target"] = y
 
                 filename = f"{generation_algorithm}_generated.csv"
-                print(filename)
                 file_path = os.path.join(project_folder, "datasets", filename)
                 df.to_csv(file_path, index=False)
 
-                print(file_path)
                 preview_data = {
                     "columns": df.columns.tolist(),
                     "data": df.head().values.tolist(),
@@ -928,7 +911,7 @@ def get_algorithm_doc():
             "Random Trees Embedding": ("sklearn.ensemble", "RandomTreesEmbedding"),
             "MLP Regressor": ("sklearn.neural_network", "MLPRegressor"),
             # Clustering
-            "K-Means": ("sklearn.cluster", "KMeans"),
+            "KMeans": ("sklearn.cluster", "KMeans"),
             "DBSCAN": ("sklearn.cluster", "DBSCAN"),
             "OPTICS": ("sklearn.cluster", "OPTICS"),
             "Agglomerative": ("sklearn.cluster", "AgglomerativeClustering"),
@@ -990,7 +973,6 @@ def get_algorithm_doc():
                         short_desc += " " + line.strip()
                     if len(short_desc) > 100:  # Limiter la longueur
                         break
-        print(params)
         return jsonify(
             {"doc": doc, "parameters": params, "short_description": short_desc}
         )
@@ -1037,7 +1019,6 @@ def select_type():
         try:
             algorithm_parameters_dict = json.loads(algorithm_parameters)
             algorithm_parameters_raw = algorithm_parameters_dict.get("parameters", {})
-            print(algorithm_parameters_raw)
             params_filename = (
                 f"{project_name}_{filename}_{algo}_algorithm_parameters.pkl"
             )
@@ -1091,7 +1072,6 @@ def select_features():
         if request.is_json or request.headers.get("Content-Type") == "application/json":
             features = data.columns.tolist()
             stats = numeric_data.describe().transpose().to_dict(orient="index")
-            print(features)
             return jsonify(
                 {
                     "model_info": {
@@ -1164,7 +1144,32 @@ def select_features():
         else:
             return redirect(url_for("train_model"))
 
+import numpy as np
 
+def convert_to_serializable(obj):
+    if isinstance(obj, np.ndarray):
+        return obj.tolist()
+    elif isinstance(obj, (np.int64, np.int32)):
+        return int(obj)
+    elif isinstance(obj, (np.float64, np.float32)):
+        return float(obj)
+    elif isinstance(obj, list):
+        return [convert_to_serializable(x) for x in obj]
+    elif isinstance(obj, dict):
+        return {k: convert_to_serializable(v) for k, v in obj.items()}
+    else:
+        return obj
+
+def to_native(val):
+    """Convertit les types NumPy vers des types natifs Python."""
+    if isinstance(val, (np.integer, np.int64, np.int32)):
+        return int(val)
+    elif isinstance(val, (np.floating, np.float64, np.float32)):
+        return float(val)
+    elif isinstance(val, np.ndarray):
+        return val.tolist()
+    else:
+        return val
 @app.route("/train_model", methods=["GET"])
 def train_model():
     # Authentication check
@@ -1248,7 +1253,8 @@ def train_model():
             X_test = params.get("X_test")
             if "X_train_columns" in params and params["X_train_columns"] is not None:
                 X_test = pd.DataFrame(X_test, columns=params["X_train_columns"])
-            predictions = model.predict(X_test)[:20]
+            predictions_serialize = model.predict(X_test)[:20]
+            predictions = convert_to_serializable(predictions_serialize)
             if isinstance(predictions, pd.DataFrame):
                 predictions = predictions.values.tolist()
             values = params.get("y_test", [])[:20]
@@ -1288,20 +1294,22 @@ def train_model():
             predictions = unsupervised_models.predict_cluster(
                 model, X_scaled, X_scaled, labels
             )[:20]
-            predictions = (
+            predictions_serialize = (
                 predictions.tolist()
                 if isinstance(predictions, np.ndarray)
                 else predictions
             )
+            predictions = convert_to_serializable(predictions_serialize)
+            print(type(predictions[0]))
             values = labels[:20]
             values = values.tolist() if isinstance(values, np.ndarray) else values
-            predictions_values = list(zip(predictions, values))
+            predictions_values = [(to_native(p), to_native(v)) for p, v in zip(predictions, values)]
     except ValueError as e:
         return jsonify({"success": False, "error": f"Training error: {str(e)}"}), 400
     except Exception as e:
         return jsonify({"success": False, "error": f"Unexpected error: {str(e)}"}), 500
 
-    model_info = {
+    model_info_raw = {
         "filename": filename,
         "project_name": project_name,
         "model_type": model_type,
@@ -1311,7 +1319,15 @@ def train_model():
         "predictions_values": predictions_values,
         "params_dict": algorithm_parameters,
         "preprocessing_options": preprocessing_options,
+        "params_path": params_path
     }
+    print("before")
+    for i,v in enumerate(model_info_raw):
+        print(i , v)
+        print(type(v))
+    print(type(predictions_values[0][0]))
+    model_info = convert_to_serializable(model_info_raw)
+    print("after")
     session['model_info'] = model_info
     return jsonify(
         {
@@ -1355,9 +1371,7 @@ def evaluate():
             if learning_type == "supervised":
                 params = supervised_models.model_evaluate(params)
             else:  # unsupervised
-                print("before")
                 params = unsupervised_models.model_evaluate(params)
-                print("after")
             params_filename = f"{project_name}_{filename}_{algo}_params.pkl"
             params_folder = os.path.join(
                 UPLOAD_FOLDER, f"user_{user_id}", project_name, "params"
@@ -1367,8 +1381,9 @@ def evaluate():
             jb.dump(params, params_path)
             session["params_path"] = params_path
             metrics = params["metrics"]
+            
 
-            return jsonify({"success" : True, "metrics" : metrics})
+            return jsonify({"success" : True, "metrics" : metrics, "model_info" : model_info})
 
         except ValueError as e:
             error = str(e)
@@ -1378,74 +1393,21 @@ def evaluate():
     return jsonify({"success": True, "error": error})
 
 
-@app.route("/save", methods=["POST"])
-def save():
-    project_name = session.get("project_name")
-    user_id = session["user_id"]
-    filename = session.get("filename")
-    algo = session.get("algo")
-    model_type = session.get("model_type")
-    params_path = session.get("params_path")
-    params = jb.load(params_path)
-    algorithm_params_path = session.get("algorithm_params_path")
-    algorithm_params = jb.load(algorithm_params_path)
-    params["algorithm_params"] = algorithm_params
-    params_filename = f"{project_name}_{filename}_{algo}_params.pkl"
-    params_folder = os.path.join(
-        current_app.config["UPLOAD_FOLDER"], f"user_{user_id}", project_name, "params"
-    )
-    os.makedirs(params_folder, exist_ok=True)
-    params_path = os.path.join(params_folder, params_filename)
-    jb.dump(params, params_path)
-    if not project_name or not filename or not algo or not model_type:
-        return render_template(
-            "error.html",
-            error="Erreur : projet, fichier, algorithme ou type de modèle non spécifié.",
-        )
-    project_folder = os.path.join(
-        current_app.config["UPLOAD_FOLDER"], f"user_{user_id}", project_name, "datasets"
-    )
-    filepath = os.path.join(project_folder, filename)
-    print(filepath)
-    if not os.path.exists(filepath):
-        return render_template(
-            "error.html",
-            error=f"error : fichier {filename} introuvable dans le projet {project_name}.",
-        )
-    # Création du dossier de sauvegarde spécifique au projet
-    model_folder = os.path.join(
-        current_app.config["UPLOAD_FOLDER"], f"user_{user_id}", project_name, "models"
-    )
-    os.makedirs(model_folder, exist_ok=True)
-    model_file = os.path.join(model_folder, f"{algo}_model.pkl")
-    model_path = params["model_path"]
-    print("model path :   ", model_path)
-    model = jb.load(model_path)
-    jb.dump(model, model_file)
-
-    # Extraire les paramètres du modèle pour les afficher
-
-    return render_template(
-        "save.html",
-        save="Modèle sauvegardé avec succès!",
-        project_name=project_name,
-        filename=filename,
-        algo=algo,
-        model_type=model_type,
-        model_path=model_file,
-        model_params=algorithm_params,
-    )
-
 
 @app.route("/plot_results", methods=["POST", "GET"])
 def plot_results():
-    project_name = session.get("project_name")
-    filename = session.get("filename")
-    algo = session.get("algo")
-    model_type = session.get("model_type")
-    learning_type = session.get("learning_type", "supervised")
-    params_path = session.get("params_path")
+    model_info = session.get("model_info", {})
+    project_name = model_info.get("project_name")
+    filename = model_info.get("filename")
+    algo = model_info.get("algo")
+    model_type = model_info.get("model_type")
+    learning_type = model_info.get("learning_type", "supervised")
+    predictions_values = model_info.get("predictions_values")
+    params_dict = model_info.get("params_dict")
+    preprocessing_options = model_info.get("preprocessing_options")
+    params_path = model_info.get("params_path")
     params = jb.load(params_path)
+    
     if not params:
         return jsonify({"success": False, "error": "No parameters found."}), 400
     if not project_name or not filename or not algo:
@@ -1468,34 +1430,30 @@ def plot_results():
                 try:
                     model = jb.load(params["model_path"])
                 except Exception as e:
-                    return render_template(
-                        "error.html", error=f"Error loading model: {str(e)}"
+                    return jsonify(
+                        {
+                            "success": False,
+                            "error": f"Failed to load the model: {str(e)}",
+                        }
                     )
             else:
-                return render_template(
-                    "error.html", error="Model not available for prediction"
+                return jsonify(
+                    {
+                        "success": False,
+                        "error": "Model not found. Please train the model first.",
+                    }
                 )
 
             # Prepare X_test for prediction
             X_test = params["X_test"]
-            if "X_train_columns" in params and params["X_train_columns"] is not None:
-                X_test = pd.DataFrame(X_test, columns=params["X_train_columns"])
-            else:
-                X_test = np.array(X_test) if isinstance(X_test, list) else X_test
-
-            predictions = model.predict(X_test)
-            if isinstance(predictions, pd.DataFrame):
-                predictions = predictions.values.tolist()
-            else:
-                predictions = predictions.tolist()
-
+            y_test = params["y_test"]
             # Save static image
             plt.figure(figsize=(4, 3))
-            plt.plot(params["y_test"], label="y_test", color="blue", marker="o")
-            plt.plot(predictions, label="y_pred", color="red", marker="x")
+            plt.plot(X_test,y_test, label="y_test", color="blue", marker="o")
+            plt.plot(X_test,predictions_values, label="y_pred", color="red", marker="x")
             plt.title("Courbe de différence Y_TEST vs Y_PRED")
-            plt.xlabel("Itération")
-            plt.ylabel("Erreur MSE")
+            plt.xlabel("X_test")
+            plt.ylabel("y")
             plt.legend()
             plt.grid(True)
 
@@ -1525,27 +1483,17 @@ def plot_results():
                     if isinstance(params["y_test"], list)
                     else params["y_test"].tolist()
                 ),
-                "predictions": predictions,
+                "predictions": predictions_values,
                 "title": "Courbe de différence Y_TEST vs Y_PRED",
-                "xlabel": "Itération",
-                "ylabel": "Erreur MSE",
+                "xlabel": "x_test",
+                "ylabel": "y_test vs predictions"
+                
             }
             plot_title = "Regression Error Curve"
 
         else:  # Classification
             # Load the model from disk if available
             model = None
-            if "model_path" in params and os.path.exists(params["model_path"]):
-                try:
-                    model = jb.load(params["model_path"])
-                except Exception as e:
-                    return render_template(
-                        "error.html", error=f"Error loading model: {str(e)}"
-                    )
-            else:
-                return render_template(
-                    "error.html", error="Model not available for prediction"
-                )
 
             # Prepare X_test for prediction
             X_test = params["X_test"]
@@ -1556,10 +1504,14 @@ def plot_results():
 
             # Réduire la dimensionnalité à 2 dimensions pour une meilleure visualisation
             pca = PCA(n_components=2)
-            X_pca = pca.fit_transform(X_test)
-
+            print(X_test.shape)
+            X_pca = pca.fit_transform(X_test.iloc[:20, :])
+            print(X_test.shape)
             # Prédictions des classes
-            y_pred = model.predict(X_test)
+
+            y_pred = [pred[0] for pred in predictions_values]
+
+            print(y_pred)
             le = LabelEncoder()
             y_encoded = le.fit_transform(y_pred)
 
@@ -1569,8 +1521,8 @@ def plot_results():
                 X_pca[:, 0], X_pca[:, 1], c=y_encoded, cmap="viridis", marker="o"
             )
             plt.title("Clusters de Classification")
-            plt.xlabel("Composante Principale 1")
-            plt.ylabel("Composante Principale 2")
+            plt.xlabel("PC1")
+            plt.ylabel("PC2")
 
             # Ajouter une légende
             legend1 = plt.legend(*scatter.legend_elements(), title="Classes")
@@ -1604,8 +1556,8 @@ def plot_results():
                 "x_pca_1": X_pca[:, 1].tolist(),
                 "labels": y_encoded.tolist(),
                 "title": "Clusters de Classification",
-                "xlabel": "Composante Principale 1",
-                "ylabel": "Composante Principale 2",
+                "xlabel": "PC1",
+                "ylabel": "PC2",
             }
             plot_title = "Classification Clusters"
 
@@ -1620,8 +1572,11 @@ def plot_results():
                     "error.html", error=f"Error loading model: {str(e)}"
                 )
         else:
-            return render_template(
-                "error.html", error="Model not available for prediction"
+            return jsonify(
+                {
+                    "success": False,
+                    "error": "Model not found. Please train the model first.",
+                }
             )
 
         X = params["X"]
@@ -1637,8 +1592,8 @@ def plot_results():
             X_pca[:, 0], X_pca[:, 1], c=labels, cmap="viridis", marker="o"
         )
         plt.title("Clusters Non Supervisés")
-        plt.xlabel("Composante Principale 1")
-        plt.ylabel("Composante Principale 2")
+        plt.xlabel("PC1")
+        plt.ylabel("PC2")
 
         # Ajouter une légende
         legend1 = plt.legend(*scatter.legend_elements(), title="Clusters")
@@ -1669,15 +1624,16 @@ def plot_results():
             "x_pca_1": X_pca[:, 1].tolist(),
             "labels": labels.tolist() if hasattr(labels, "tolist") else labels,
             "title": "Clusters Non Supervisés",
-            "xlabel": "Composante Principale 1",
-            "ylabel": "Composante Principale 2",
+            "xlabel": "PC1",
+            "ylabel": "PC2",
         }
         plot_title = "Unsupervised Clusters"
 
     # Convert plot data to JSON for the template
     import json
-
     plot_data_json = json.dumps(plot_data)
+    
+
 
     return jsonify(
         {

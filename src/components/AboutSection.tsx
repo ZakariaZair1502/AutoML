@@ -1,27 +1,32 @@
 import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Book, Users, Settings, Star } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 const AboutSection = () => {
+  const navigate = useNavigate();
+
   const features = [
     {
       icon: <Book className="w-6 h-6" />,
+      type : "supervised",
       title: "Supervised Learning",
       description: "Classification and regression to predict values from labeled data with advanced algorithms"
     },
     {
       icon: <Users className="w-6 h-6" />,
+      type : "unsupervised",
       title: "Unsupervised Learning", 
       description: "Clustering and dimensionality reduction to uncover hidden patterns in your data"
     },
     {
       icon: <Settings className="w-6 h-6" />,
-      title: "Preprocessing",
+      title: "preprocessing",
       description: "Data cleaning and transformation to improve model performance automatically"
     },
     {
       icon: <Star className="w-6 h-6" />,
-      title: "Dashboard",
+      title: "dashboard",
       description: "Visualization and management of your data analysis projects in one place"
     }
   ];
@@ -47,13 +52,14 @@ const AboutSection = () => {
               key={index}
               className="bg-white/5 backdrop-blur-sm border border-white/10 hover:bg-white/10 transition-all duration-300 hover:transform hover:scale-105 hover:shadow-2xl hover:shadow-emerald-500/10 group"
             >
-              <CardContent className="p-6 text-center">
+              <CardContent className="p-6 text-center"  onClick={() => navigate(`/${feature.type}`)}>
                 <div className="inline-flex items-center justify-center w-12 h-12 bg-gradient-to-r from-emerald-500/20 to-blue-500/20 rounded-xl mb-4 group-hover:from-emerald-500/30 group-hover:to-blue-500/30 transition-all duration-300">
-                  <div className="text-emerald-400 group-hover:text-emerald-300 transition-colors">
+                  <div className="text-emerald-400 group-hover:text-emerald-300 transition-colors" 
+                  >
                     {feature.icon}
                   </div>
                 </div>
-                <h3 className="text-lg font-semibold text-white mb-3 group-hover:text-emerald-100 transition-colors">
+                <h3 className="text-lg font-semibold text-white mb-3 group-hover:text-emerald-100 transition-colors" >
                   {feature.title}
                 </h3>
                 <p className="text-white/60 text-sm leading-relaxed group-hover:text-white/70 transition-colors">

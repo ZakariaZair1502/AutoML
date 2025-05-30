@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { CustomCard, CustomCardHeader, CustomCardBody } from '@/components/ui/custom-card';
 import { Form, FormGroup, FormLabel, FormInput } from '@/components/ui/custom-form';
 import { CustomButton } from '@/components/ui/custom-button';
@@ -22,6 +23,7 @@ const FeatureSelection: React.FC = () => {
     model_type: '',
     learning_type: ''
   });
+  const navigate = useNavigate();
   const [features, setFeatures] = useState<string[]>([]);
   const [stats, setStats] = useState<{ [key: string]: FeatureStats }>({});
   const [selectedFeatures, setSelectedFeatures] = useState<string[]>([]);
@@ -92,10 +94,12 @@ const FeatureSelection: React.FC = () => {
         body: JSON.stringify(payload)
       });
 
-      if (!response.ok) throw new Error('Failed to submit features');
+      if (!response.ok) {throw new Error('Failed to submit features');}
+      else{
+        navigate("/results");
+      }
       
       // Navigate to next step (prediction page)
-      window.location.href = '/results';
     } catch (err) {
       console.error('Failed to submit features:', err);
     } finally {

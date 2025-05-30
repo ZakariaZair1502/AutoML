@@ -40,6 +40,7 @@ const HeroSection = () => {
         {/* CTA Buttons */}
         <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
           <Button 
+          onClick={() => window.scrollTo({ top: 600, behavior: 'smooth' })}
             size="lg" 
             className="bg-gradient-to-r from-emerald-500 to-blue-600 hover:from-emerald-600 hover:to-blue-700 text-white px-8 py-6 text-lg font-semibold rounded-xl shadow-2xl hover:shadow-emerald-500/25 transition-all duration-300 transform hover:scale-105 group"
           >
@@ -48,22 +49,23 @@ const HeroSection = () => {
           </Button>
           
           <Button 
+          onClick={() => window.location.href = '/dashboard'}
             variant="outline" 
             size="lg" 
             className="border-white/30 text-white hover:bg-white/10 px-8 py-6 text-lg font-semibold rounded-xl backdrop-blur-sm transition-all duration-300"
           >
-            Watch Demo
+            Dashboard
           </Button>
         </div>
         
         {/* Stats */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mt-20 max-w-2xl mx-auto">
           <div className="text-center">
-            <div className="text-3xl font-bold text-white mb-2">10K+</div>
+            <div className="text-3xl font-bold text-white mb-2">30+</div>
             <div className="text-white/60">Models Trained</div>
           </div>
           <div className="text-center">
-            <div className="text-3xl font-bold text-white mb-2">99.9%</div>
+            <div className="text-3xl font-bold text-white mb-2"> &gt; 99.9%</div>
             <div className="text-white/60">Accuracy Rate</div>
           </div>
           <div className="text-center">

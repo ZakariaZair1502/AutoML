@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useSearchParams, Link } from 'react-router-dom';
+import { useSearchParams, Link, useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
 import { CustomCard, CustomCardHeader, CustomCardBody } from '../components/ui/custom-card';
 import { CustomButton } from '../components/ui/custom-button';
@@ -10,6 +10,7 @@ const Results: React.FC = () => {
   const [searchParams] = useSearchParams();
   const [modelInfo, setModelInfo] = useState<any>(null);
   const [error, setError] = useState<string>('');
+  const navigate = useNavigate();
   useEffect(() => {
     const fetchModelInfo = async () => {
       try {
@@ -135,16 +136,10 @@ const Results: React.FC = () => {
             {/* Action Buttons */}
             <div className="flex gap-4 justify-center pt-6">
               <CustomButton 
-                onClick={() => {}}
+                onClick={() => {navigate("/evaluate");}}
                 variant="primary"
               >
                 Evaluate Model
-              </CustomButton>
-              <CustomButton 
-                onClick={() => {}}
-                variant="secondary"
-              >
-                Save Model
               </CustomButton>
             </div>
           </CustomCardBody>

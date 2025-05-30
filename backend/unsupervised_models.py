@@ -10,7 +10,7 @@ from sklearn import metrics
 from sklearn.impute import SimpleImputer
 from sklearn.feature_selection import SelectKBest, f_classif, f_regression
 ALGORITHMS = {
-    'K-Means': KMeans,
+    'KMeans': KMeans,
     'DBSCAN': DBSCAN,
     'HDBSCAN': HDBSCAN,  # Ajout de 'HDBSCAN'
     'OPTICS': OPTICS,
@@ -377,9 +377,9 @@ def model_evaluate(params):
             metrics_dict['silhouette'] = float(metrics.silhouette_score(X_scaled, labels))
         except Exception as e:
             print(f"Erreur silhouette_score: {str(e)}")
-            metrics_dict['silhouette'] = "Non calculable"
+            metrics_dict['silhouette'] = None
     else:
-        metrics_dict['silhouette'] = "Non calculable"
+        metrics_dict['silhouette'] = None
 
     # Calinski-Harabasz Index
     if len(set(labels)) > 1 and not all(l == -1 for l in labels):
@@ -387,9 +387,9 @@ def model_evaluate(params):
             metrics_dict['calinski_harabasz'] = float(metrics.calinski_harabasz_score(X_scaled, labels))
         except Exception as e:
             print(f"Erreur calinski_harabasz_score: {str(e)}")
-            metrics_dict['calinski_harabasz'] = "Non calculable"
+            metrics_dict['calinski_harabasz'] = None
     else:
-        metrics_dict['calinski_harabasz'] = "Non calculable"
+        metrics_dict['calinski_harabasz'] = None
 
     # Davies-Bouldin Index
     if len(set(labels)) > 1 and not all(l == -1 for l in labels):
@@ -397,9 +397,9 @@ def model_evaluate(params):
             metrics_dict['davies_bouldin'] = float(metrics.davies_bouldin_score(X_scaled, labels))
         except Exception as e:
             print(f"Erreur davies_bouldin_score: {str(e)}")
-            metrics_dict['davies_bouldin'] = "Non calculable"
+            metrics_dict['davies_bouldin'] = None
     else:
-        metrics_dict['davies_bouldin'] = "Non calculable"
+        metrics_dict['davies_bouldin'] = None
 
     # Nombre de clusters
     metrics_dict['n_clusters'] = params.get('n_clusters', len(set(labels)) - (1 if -1 in labels else 0))
