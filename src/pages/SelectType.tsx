@@ -585,7 +585,7 @@ const AlgorithmSelection: React.FC = () => {
 
   return (
     <Layout>
-    <div className="min-h-screen py-12 px-4 bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
+    <div className="min-h-screen py-12 px-4 ">
       <div className="container mx-auto max-w-4xl">
         <div className="text-center mb-8">
           <h1 className="text-4xl font-bold text-white mb-4">
@@ -691,9 +691,10 @@ const AlgorithmSelection: React.FC = () => {
                         Documentation
                       </h4>
                       <div
-                        className="prose prose-invert max-w-none bg-white/5 p-4 rounded-lg border border-white/10"
-                        dangerouslySetInnerHTML={{ __html: formatDocString(algorithmDoc.doc || "") }}
-                      />
+  className="prose prose-invert max-w-none bg-white/5 p-4 rounded-lg border border-white/10 overflow-y-auto"
+  style={{ maxHeight: "300px" }}
+  dangerouslySetInnerHTML={{ __html: formatDocString(algorithmDoc.doc || "") }}
+/>
                     </div>
                   </div>
                 )}

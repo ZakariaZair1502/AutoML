@@ -1,106 +1,109 @@
+
 import React, { useState, useEffect } from 'react';
-import { cn } from '@/lib/utils';
-import styles from '@/styles/Navbar.module.css';
+import { Link, useLocation } from 'react-router-dom';
+import { Menu, X, Home, BarChart3, Settings, User, LayoutDashboardIcon } from 'lucide-react';
 
-interface NavLinkProps {
-  href: string;
-  children: React.ReactNode;
-  onClick?: () => void;
-}
-
-const NavLink: React.FC<NavLinkProps> = ({ href, children, onClick }) => (
-  <li className={styles.nav__item}>
-    <a 
-      href={href}
-      className={cn(
-        styles.nav__link,
-        "flex items-center text-light-blue font-medium relative py-2 hover:text-white transition-colors"
-      )}
-      onClick={onClick}
-    >
-      <i className="ri-arrow-right-up-line mr-2 text-lg transition-transform group-hover:translate-y-[-3px] group-hover:text-accent"></i>
-      <span>{children}</span>
-    </a>
-  </li>
-);
-
-const Navbar: React.FC = () => {
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [isScrolled, setIsScrolled] = useState(false);
+const Navbar = () => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
+  const location = useLocation();
 
   useEffect(() => {
     const handleScroll = () => {
-      setIsScrolled(window.scrollY >= 50);
+      setScrolled(window.scrollY > 20);
     };
 
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  const toggleMenu = () => {
-    setIsMenuOpen(!isMenuOpen);
-    document.body.style.overflow = isMenuOpen ? 'auto' : 'hidden';
-  };
-
-  const closeMenu = () => {
-    setIsMenuOpen(false);
-    document.body.style.overflow = 'auto';
-  };
+  const navItems = [
+    { name: 'Accueil', path: '/', icon: Home },
+    { name: 'Supervised', path: '/supervised', icon: BarChart3 },
+    { name: 'Unsupervised', path: '/unsupervised', icon: Settings },
+    { name: 'Preprocessing', path: '/preprocessing', icon: User },
+    { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboardIcon },
+  ];
 
   return (
-    <header className={cn(
-      "sticky top-0 left-0 w-full z-50 bg-opacity-95 backdrop-blur-md shadow transition-all",
-      isScrolled ? "py-2 bg-[rgba(22,33,62,0.98)]" : "py-4 bg-[rgba(22,33,62,0.95)]"
-    )}>
-      <nav className="container mx-auto px-6 flex justify-between items-center">
-        <a href="/" className="text-2xl font-bold text-white flex items-center">
-          <span className="mr-2 text-3xl">⚙️</span>
-          AutoModler
-        </a>
+    <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
+      scrolled 
+        ? 'bg-black/20 backdrop-blur-lg border-b border-white/10' 
+        : 'bg-transparent'
+    }`}>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex justify-between items-center h-16">
+          {/* Logo */}
+          <Link to="/" className="flex items-center space-x-2 group">
+            <div className="w-8 h-8 bg-gradient-to-r from-purple-500 to-blue-500 rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform duration-200">
+              <BarChart3 className="w-5 h-5 text-white" />
+            </div>
+            <span className="text-xl font-bold text-white group-hover:text-purple-300 transition-colors duration-200">
+              ML Studio
+            </span>
+          </Link>
 
-        <div className={cn(
-          styles.nav__menu,
-          "fixed top-0 right-0 h-full w-64 md:w-auto md:static bg-[rgba(22,33,62,0.98)] md:bg-transparent p-8 md:p-0 transition-transform duration-300 md:translate-x-0 z-50",
-          isMenuOpen ? styles['show-menu'] + " translate-x-0" : "translate-x-full"
-        )}>
-          <ul className="flex flex-col md:flex-row md:items-center space-y-6 md:space-y-0 md:space-x-8">
-            <NavLink href="/supervised" onClick={closeMenu}>supervised</NavLink>
-            <NavLink href="/unsupervised" onClick={closeMenu}>unsupervised</NavLink>
-            <NavLink href="/preprocessing" onClick={closeMenu}>preprocessing</NavLink>
-            <NavLink href="/dashboard" onClick={closeMenu}>dashboard</NavLink>
-            <NavLink href="#" onClick={closeMenu}>Contact</NavLink>
-          </ul>
+          {/* Desktop Navigation */}
+          <div className="hidden md:flex items-center space-x-8">
+            {navItems.map((item) => {
+              const Icon = item.icon;
+              const isActive = location.pathname === item.path;
+              
+              return (
+                <Link
+                  key={item.path}
+                  to={item.path}
+                  className={`flex items-center space-x-2 px-3 py-2 rounded-lg transition-all duration-200 ${
+                    isActive
+                      ? 'text-purple-300 bg-white/10'
+                      : 'text-white/80 hover:text-white hover:bg-white/5'
+                  }`}
+                >
+                  <Icon className="w-4 h-4" />
+                  <span>{item.name}</span>
+                </Link>
+              );
+            })}
+          </div>
 
-          <button 
-            className={cn(styles.nav__close, "absolute top-4 right-4 text-2xl text-white md:hidden")}
-            onClick={closeMenu}
-            aria-label="Close menu"
+          {/* Mobile menu button */}
+          <button
+            onClick={() => setIsOpen(!isOpen)}
+            className="md:hidden p-2 rounded-lg text-white hover:bg-white/10 transition-colors duration-200"
           >
-            <i className="ri-close-large-line"></i>
+            {isOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
           </button>
         </div>
 
-        {/* Overlay */}
-        {isMenuOpen && (
-          <div 
-            className={cn(
-              styles.nav__overlay,
-              styles.active,
-              "fixed inset-0 bg-black bg-opacity-50 z-40 md:hidden"
-            )}
-            onClick={closeMenu}
-          />
+        {/* Mobile Navigation */}
+        {isOpen && (
+          <div className="md:hidden absolute top-16 left-0 right-0 bg-black/40 backdrop-blur-lg border border-white/10 rounded-b-2xl mx-4 animate-fade-in">
+            <div className="py-4 px-4 space-y-2">
+              {navItems.map((item) => {
+                const Icon = item.icon;
+                const isActive = location.pathname === item.path;
+                
+                return (
+                  <Link
+                    key={item.path}
+                    to={item.path}
+                    onClick={() => setIsOpen(false)}
+                    className={`flex items-center space-x-3 px-4 py-3 rounded-lg transition-all duration-200 ${
+                      isActive
+                        ? 'text-purple-300 bg-white/10'
+                        : 'text-white/80 hover:text-white hover:bg-white/5'
+                    }`}
+                  >
+                    <Icon className="w-5 h-5" />
+                    <span>{item.name}</span>
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
         )}
-
-        <button 
-          className={cn(styles.nav__toggle, "text-2xl text-white md:hidden")}
-          onClick={toggleMenu}
-          aria-label="Open menu"
-        >
-          <i className="ri-menu-line"></i>
-        </button>
-      </nav>
-    </header>
+      </div>
+    </nav>
   );
 };
 

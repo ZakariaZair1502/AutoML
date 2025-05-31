@@ -151,29 +151,6 @@ const Prediction = () => {
     window.location.href = '/evaluate';
   };
 
-  const handleSave = async () => {
-    setLoading(true);
-    try {
-      const response = await fetch('http://localhost:5000/save', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include',
-        body: JSON.stringify(modelInfo)
-      });
-
-      if (!response.ok) throw new Error('Save failed');
-      
-      console.log('Model saved successfully');
-    } catch (err) {
-      setError('Save failed');
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   return (
     <Layout>
       <div className="min-h-screen py-12 px-4">
@@ -316,14 +293,6 @@ const Prediction = () => {
                   size="lg"
                 >
                   Evaluate Model
-                </CustomButton>
-                <CustomButton
-                  onClick={handleSave}
-                  disabled={loading}
-                  variant="outline"
-                  size="lg"
-                >
-                  Save Model
                 </CustomButton>
               </div>
             </CustomCardBody>

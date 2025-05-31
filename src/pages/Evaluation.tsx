@@ -191,34 +191,34 @@ const Evaluation = () => {
                     <>
                       <div className="p-4 bg-white/5 rounded-lg border border-white/10">
                         <p className="text-gray-400 text-sm">Score</p>
-                        <p className="text-white font-medium text-xl">{metrics.score?.toFixed(4)}</p>
+                        <p className="text-white font-medium text-xl">{metrics.score?.toFixed(8)}</p>
                       </div>
                       <div className="p-4 bg-white/5 rounded-lg border border-white/10">
                         <p className="text-gray-400 text-sm">Mean Squared Error (MSE)</p>
-                        <p className="text-white font-medium text-xl">{metrics.mse?.toFixed(4)}</p>
+                        <p className="text-white font-medium text-xl">{metrics.mse?.toFixed(8)}</p>
                       </div>
                       <div className="p-4 bg-white/5 rounded-lg border border-white/10 md:col-span-2">
                         <p className="text-gray-400 text-sm">Mean Absolute Error (MAE)</p>
-                        <p className="text-white font-medium text-xl">{metrics.mae?.toFixed(4)}</p>
+                        <p className="text-white font-medium text-xl">{metrics.mae?.toFixed(8)}</p>
                       </div>
                     </>
                   ) : (
                     <>
                       <div className="p-4 bg-white/5 rounded-lg border border-white/10">
                         <p className="text-gray-400 text-sm">Accuracy</p>
-                        <p className="text-white font-medium text-xl">{metrics.accuracy?.toFixed(4)}</p>
+                        <p className="text-white font-medium text-xl">{metrics.accuracy?.toFixed(8)}</p>
                       </div>
                       <div className="p-4 bg-white/5 rounded-lg border border-white/10">
                         <p className="text-gray-400 text-sm">Precision</p>
-                        <p className="text-white font-medium text-xl">{metrics.precision?.toFixed(4)}</p>
+                        <p className="text-white font-medium text-xl">{metrics.precision?.toFixed(8)}</p>
                       </div>
                       <div className="p-4 bg-white/5 rounded-lg border border-white/10">
                         <p className="text-gray-400 text-sm">Recall</p>
-                        <p className="text-white font-medium text-xl">{metrics.recall?.toFixed(4)}</p>
+                        <p className="text-white font-medium text-xl">{metrics.recall?.toFixed(8)}</p>
                       </div>
                       <div className="p-4 bg-white/5 rounded-lg border border-white/10">
                         <p className="text-gray-400 text-sm">F1 Score</p>
-                        <p className="text-white font-medium text-xl">{metrics.f1_score?.toFixed(4)}</p>
+                        <p className="text-white font-medium text-xl">{metrics.f1_score?.toFixed(8)}</p>
                       </div>
                     </>
                   )
@@ -226,15 +226,15 @@ const Evaluation = () => {
                   <>
                     <div className="p-4 bg-white/5 rounded-lg border border-white/10">
                       <p className="text-gray-400 text-sm">Silhouette Score</p>
-                      <p className="text-white font-medium text-xl">{metrics.silhouette != null ? metrics.silhouette.toFixed(4) : "Non calculable"}</p>
+                      <p className="text-white font-medium text-xl">{metrics.silhouette != null ? metrics.silhouette.toFixed(8) : "Non calculable"}</p>
                     </div>
                     <div className="p-4 bg-white/5 rounded-lg border border-white/10">
                       <p className="text-gray-400 text-sm">Calinski-Harabasz Index</p>
-                      <p className="text-white font-medium text-xl">{metrics.calinski_harabasz != null ? metrics.calinski_harabasz.toFixed(4) : "Non calculable"}</p>
+                      <p className="text-white font-medium text-xl">{metrics.calinski_harabasz != null ? metrics.calinski_harabasz.toFixed(8) : "Non calculable"}</p>
                     </div>
                     <div className="p-4 bg-white/5 rounded-lg border border-white/10">
                       <p className="text-gray-400 text-sm">Davies-Bouldin Index</p>
-                      <p className="text-white font-medium text-xl">{metrics.davies_bouldin != null ? metrics.davies_bouldin.toFixed(4) : "Non calculable"}</p>
+                      <p className="text-white font-medium text-xl">{metrics.davies_bouldin != null ? metrics.davies_bouldin.toFixed(8) : "Non calculable"}</p>
                     </div>
                     <div className="p-4 bg-white/5 rounded-lg border border-white/10">
                       <p className="text-gray-400 text-sm">Number of Clusters</p>

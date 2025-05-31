@@ -614,7 +614,7 @@ const UploadPage: React.FC = () => {
 
   return (
     <Layout>
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 py-12">
+      <div className="min-h-screen py-12">
         <div className="container mx-auto px-4 md:px-6">
           {flashMessage && (
             <div
@@ -972,7 +972,7 @@ const UploadPage: React.FC = () => {
                     <p>Loading preview...</p>
                   </div>
                 ) : previewData ? (
-                  <div className="overflow-x-auto">
+                  <div className="overflow-x-auto bg-white">
                     <table className="min-w-full divide-y divide-gray-700">
                       <thead>
                         <tr>

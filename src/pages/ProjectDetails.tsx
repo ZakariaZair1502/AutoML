@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { useSearchParams, useNavigate } from 'react-router-dom';
+import { useSearchParams, useNavigate, useParams } from 'react-router-dom';
 import { CustomCard, CustomCardHeader, CustomCardBody } from '@/components/ui/custom-card';
 import { CustomButton } from '@/components/ui/custom-button';
 import { FileText, Settings, BarChart3, ArrowLeft, Play } from 'lucide-react';
@@ -23,23 +23,25 @@ interface Project {
 
 const ProjectDetails = () => {
   const [searchParams] = useSearchParams();
+  const { name } = useParams();
   const navigate = useNavigate();
   const [project, setProject] = useState<Project | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  const projectName = searchParams.get('project_name');
+  const projectName = searchParams.get('name');
 
-  useEffect(() => {
-    if (projectName) {
-      fetchProjectDetails(projectName);
-    }
-  }, [projectName]);
+  
+
+  if (loading) return <p className="text-white">Chargement...</p>;
+  if (error) return <p className="text-red-500">{error}</p>;
+  if (!project) return <p className="text-white">Aucun projet trouvé.</p>;
 
   const fetchProjectDetails = async (name: string) => {
     try {
+      console.log('name', name);
       setLoading(true);
-      const response = await fetch(`http://localhost:5000/project_details?project_name=${encodeURIComponent(name)}`, {
+      const response = await fetch(`http://localhost:5000/project/${encodeURIComponent(name)}`, {
         method: 'GET',
         credentials: 'include',
       });
@@ -47,14 +49,27 @@ const ProjectDetails = () => {
       if (!response.ok) throw new Error('Failed to fetch project details');
 
       const data = await response.json();
-      setProject(data);
+
+      if (data.success) {
+        setProject(data.project_info);
+        setError('error');
+      } else {
+        setError(data.error || 'Erreur inconnue');
+      }
     } catch (err) {
-      setError('Failed to load project details');
+      setError('Échec du chargement des détails du projet');
       console.error(err);
     } finally {
       setLoading(false);
     }
   };
+  useEffect(() => {
+    console.log('name', name);
+    if (name) {
+      console.log('name', name);
+      fetchProjectDetails(name);
+    }
+  }, [name]);
 
   const handlePredict = () => {
     if (!project) return;

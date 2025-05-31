@@ -1,88 +1,80 @@
 import React from 'react';
-import { cn } from '@/lib/utils';
+import { Heart, Github, Twitter, Mail } from 'lucide-react';
 
-interface FooterProps {
-  className?: string;
-}
-
-const Footer: React.FC<FooterProps> = ({ className }) => {
+const Footer = () => {
   return (
-    <footer className={cn(
-      "bg-dark-blue py-8 mt-auto",
-      className
-    )}>
-      <div className="container mx-auto px-6">
-        <div className="flex flex-col md:flex-row justify-between items-center">
-          <div className="mb-6 md:mb-0">
-            <a href="/" className="text-xl font-bold text-white flex items-center">
-              <span className="mr-2 text-2xl">⚙️</span>
-              AutoModler
-            </a>
-            <p className="mt-2 text-gray-light/70 max-w-md">
-              Simplify your machine learning workflow with our intuitive platform for data preprocessing, model training, and evaluation.
+    <footer className="relative mt-20">
+      {/* Gradient separator */}
+      <div className="h-px bg-gradient-to-r from-transparent via-white/20 to-transparent mb-8"></div>
+      
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-8">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          {/* Brand Section */}
+          <div className="space-y-4">
+            <h3 className="text-xl font-bold text-white">ML Studio</h3>
+            <p className="text-gray-300 text-sm leading-relaxed">
+              Une plateforme moderne pour l'apprentissage automatique et l'analyse de données.
+              Créez, testez et déployez vos modèles avec élégance.
             </p>
           </div>
-          
-          <div className="grid grid-cols-2 gap-8 sm:grid-cols-3">
-            <div>
-              <h3 className="text-lg font-semibold text-white mb-4">Features</h3>
-              <ul className="space-y-3">
-                <li>
-                  <a href="/supervised" className="text-light-blue hover:text-white transition-colors">
-                    Supervised Learning
+
+          {/* Quick Links */}
+          <div className="space-y-4">
+            <h4 className="text-lg font-semibold text-white">Liens Rapides</h4>
+            <ul className="space-y-2">
+              {[
+                { name: 'Documentation', href: '#' },
+                { name: 'Tutoriels', href: '#' },
+                { name: 'API Reference', href: '#' },
+                { name: 'Support', href: '#' },
+              ].map((link) => (
+                <li key={link.name}>
+                  <a
+                    href={link.href}
+                    className="text-gray-300 hover:text-purple-300 transition-colors duration-200 text-sm"
+                  >
+                    {link.name}
                   </a>
                 </li>
-                <li>
-                  <a href="/unsupervised" className="text-light-blue hover:text-white transition-colors">
-                    Unsupervised Learning
+              ))}
+            </ul>
+          </div>
+
+          {/* Contact & Social */}
+          <div className="space-y-4">
+            <h4 className="text-lg font-semibold text-white">Nous Contacter</h4>
+            <div className="flex space-x-4">
+              {[
+                { icon: Github, href: '#', label: 'GitHub' },
+                { icon: Twitter, href: '#', label: 'Twitter' },
+                { icon: Mail, href: '#', label: 'Email' },
+              ].map((social) => {
+                const Icon = social.icon;
+                return (
+                  <a
+                    key={social.label}
+                    href={social.href}
+                    className="w-10 h-10 bg-white/10 rounded-lg flex items-center justify-center text-gray-300 hover:text-white hover:bg-white/20 transition-all duration-200 hover:scale-110"
+                    aria-label={social.label}
+                  >
+                    <Icon className="w-5 h-5" />
                   </a>
-                </li>
-                <li>
-                  <a href="/preprocessing" className="text-light-blue hover:text-white transition-colors">
-                    Data Preprocessing
-                  </a>
-                </li>
-              </ul>
-            </div>
-            
-            <div>
-              <h3 className="text-lg font-semibold text-white mb-4">Resources</h3>
-              <ul className="space-y-3">
-                <li>
-                  <a href="#" className="text-light-blue hover:text-white transition-colors">
-                    Documentation
-                  </a>
-                </li>
-                <li>
-                  <a href="#" className="text-light-blue hover:text-white transition-colors">
-                    Tutorials
-                  </a>
-                </li>
-                <li>
-                  <a href="#" className="text-light-blue hover:text-white transition-colors">
-                    API Reference
-                  </a>
-                </li>
-              </ul>
+                );
+              })}
             </div>
           </div>
         </div>
-        
-        <div className="mt-8 pt-8 border-t border-[rgba(255,255,255,0.1)] flex flex-col md:flex-row justify-between items-center">
-          <p className="text-gray-light/70 text-sm">
-            © {new Date().getFullYear()} AutoModler. All rights reserved.
-          </p>
+
+        {/* Bottom section */}
+        <div className="mt-8 pt-8 border-t border-white/10 flex flex-col sm:flex-row justify-between items-center space-y-4 sm:space-y-0">
+          <div className="flex items-center space-x-2 text-gray-300 text-sm">
+            <span>Fait avec</span>
+            <Heart className="w-4 h-4 text-red-400 animate-pulse" />
+            <span>pour la communauté ML</span>
+          </div>
           
-          <div className="flex space-x-6 mt-4 md:mt-0">
-            <a href="#" className="text-light-blue hover:text-accent transition-all transform hover:-translate-y-1">
-              <i className="ri-github-fill text-xl"></i>
-            </a>
-            <a href="#" className="text-light-blue hover:text-accent transition-all transform hover:-translate-y-1">
-              <i className="ri-twitter-fill text-xl"></i>
-            </a>
-            <a href="#" className="text-light-blue hover:text-accent transition-all transform hover:-translate-y-1">
-              <i className="ri-linkedin-fill text-xl"></i>
-            </a>
+          <div className="text-gray-400 text-sm">
+            © 2024 ML Studio. Tous droits réservés.
           </div>
         </div>
       </div>

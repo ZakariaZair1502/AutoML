@@ -108,7 +108,7 @@ const Results: React.FC = () => {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {predictions_values.map((item: any, index: number) => (
+                      {predictions_values.slice(0, 10).map((item: any, index: number) => (
                         <TableRow key={index} className="border-white/10">
                           <TableCell className="text-gray-300">{Array.isArray(item) ? item[0] : item.prediction}</TableCell>
                           <TableCell className="text-gray-300">{Array.isArray(item) ? item[1] : item.actual}</TableCell>

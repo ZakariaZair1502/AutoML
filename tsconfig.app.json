@@ -25,7 +25,10 @@
     "noUnusedParameters": true,
     "erasableSyntaxOnly": true,
     "noFallthroughCasesInSwitch": true,
-    "noUncheckedSideEffectImports": true
+    "noUncheckedSideEffectImports": true,
+
+    /* 🔒 Vérification de la casse des fichiers */
+    "forceConsistentCasingInFileNames": true
   },
   "include": ["src"]
 }

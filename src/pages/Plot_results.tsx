@@ -21,22 +21,15 @@ interface PlotData {
 }
 
 const Results = () => {
-  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const [plotData, setPlotData] = useState<PlotData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  const filename = searchParams.get('filename');
-  const algo = searchParams.get('algo');
-  const projectName = searchParams.get('project_name');
-  const modelType = searchParams.get('model_type');
-  const learningType = searchParams.get('learning_type');
-
   useEffect(() => {
       fetchPlotData();
    
-  }, [filename, algo, projectName, modelType, learningType]);
+  }, []);
 
   const fetchPlotData = async () => {
     try {
@@ -50,7 +43,12 @@ const Results = () => {
       if (!response.ok) throw new Error('Failed to fetch plot data');
 
       const data = await response.json();
-      setPlotData(data);
+      console.log(data); // Ajouté pour déboguer les données reçues
+      const parsedPlotData = typeof data.plot_data === "string"
+      ? JSON.parse(data.plot_data)
+      : data.plot_data;
+
+    setPlotData(parsedPlotData);
     } catch (err) {
       console.error(err);
       setError('Erreur lors du chargement de la visualisation.');

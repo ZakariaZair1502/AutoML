@@ -27,7 +27,7 @@ import numpy as np
 import joblib as jb
 import matplotlib
 from sklearn import datasets
-
+from datetime import datetime
 matplotlib.use("Agg")  # Utiliser le backend non interactif
 import matplotlib.pyplot as plt
 from werkzeug.utils import secure_filename
@@ -252,12 +252,13 @@ def login():
         )
 
 
-@app.route("/project/<project_name>")
-def project_details(project_name):
+@app.route("/project/<string:name>", methods=["POST","GET"])
+def project_details(name):
     # Vérifier si l'utilisateur est connecté
+    project_name = name
     if "user_id" not in session:
         flash("Veuillez vous connecter pour accéder aux détails du projet.", "warning")
-        return redirect(url_for("login"))
+        return jsonify({"success": False,"error": "Veuillez vous connecter."}), 401
 
     user_id = session["user_id"]
     UPLOAD_FOLDER = current_app.config["UPLOAD_FOLDER"]
@@ -268,7 +269,7 @@ def project_details(project_name):
 
     if not os.path.exists(project_path):
         flash("Projet non trouvé.", "error")
-        return redirect(url_for("dashboard"))
+        return jsonify({"success": False,"error": "Projet non trouvé."}), 404
 
     # Récupérer les informations du projet
     project_info = {"name": project_name}
@@ -285,12 +286,12 @@ def project_details(project_name):
     if os.path.exists(models_folder):
         model_files = [f for f in os.listdir(models_folder) if f.endswith("_model.pkl")]
         if model_files:
-            project_info["model"] = model_files[0].replace("_model.pkl", "")
+            project_info["algo"] = model_files[0].replace("_model.pkl", "")
             params_folder = os.path.join(
                 UPLOAD_FOLDER, f"user_{user_id}", project_name, "params"
             )
             filename = project_info["dataset"]
-            algo = project_info["model"]
+            algo = project_info["algo"]
             params_filename = f"{project_name}_{filename}_{algo}_params.pkl"
             params_path = os.path.join(params_folder, params_filename)
             params = jb.load(params_path)
@@ -347,8 +348,19 @@ def project_details(project_name):
         project_info["type"] = "preprocessing"
     else:
         project_info["type"] = "clustering"
-
-    return render_template("project_details.html", project=project_info)
+    serialized_project_info = convert_to_serializable(project_info)
+    try:
+        json.dumps(serialized_project_info)
+    except TypeError as e:
+        print(f"Error: {e}")
+        print(f"Object: {serialized_project_info}")
+        return jsonify({"success": False,"error": "Erreur de sérialisation."}), 500
+    return jsonify(
+        {
+            "success": True,
+            "project_info": project_info,
+        }
+    )
 
 
 @app.route("/dashboard")
@@ -356,7 +368,7 @@ def dashboard():
     # Vérifier si l'utilisateur est connecté
     if "user_id" not in session:
         flash("Veuillez vous connecter pour accéder au tableau de bord.", "warning")
-        return redirect(url_for("login"))
+        return jsonify({"success": False,"error": "Veuillez vous connecter."}), 401
 
     user_id = session["user_id"]
     projects = []
@@ -367,14 +379,19 @@ def dashboard():
 
     # Vérifier si le dossier de l'utilisateur existe
     if not os.path.exists(user_folder):
-        return render_template("dashboard.html", projects=[])
+        return jsonify({"success": False,"error": "Aucun projet trouvé."}), 404
 
     # Parcourir tous les dossiers de projets de l'utilisateur
+    count_projects = 0
     for project_name in os.listdir(user_folder):
+        count_projects += 1
         project_path = os.path.join(user_folder, project_name)
         if os.path.isdir(project_path):
+            creation_time = os.path.getctime(project_path)
+            formatted_time = datetime.fromtimestamp(creation_time).strftime("%Y-%m-%d %H:%M")
             project_info = {"name": project_name}
-
+            project_info["created"] = formatted_time
+            project_info["id"] = count_projects
             # Récupérer le dataset
             datasets_folder = os.path.join(project_path, "datasets")
             if os.path.exists(datasets_folder):
@@ -391,7 +408,7 @@ def dashboard():
                     f for f in os.listdir(models_folder) if f.endswith("_model.pkl")
                 ]
                 if model_files:
-                    project_info["model"] = model_files[0].replace("_model.pkl", "")
+                    project_info["algo"] = model_files[0].replace("_model.pkl", "")
 
             # Récupérer la courbe d'erreur ou les clusters ou les visualisations de prétraitement
             if os.path.exists(os.path.join(project_path, "classification_clusters")):
@@ -448,18 +465,31 @@ def dashboard():
                 project_info["type"] = "preprocessing"
             else:
                 project_info["type"] = "clustering"
-            if project_info.get("model"):
-                algo = project_info["model"]
+            if project_info.get("algo"):
+                algo = project_info["algo"]
                 model_type = project_info["type"]
                 filename = project_info["dataset"]
                 params_filename = f"{project_name}_{filename}_{algo}_params.pkl"
                 params_file = os.path.join(project_path, "params", params_filename)
                 params = jb.load(params_file)
                 project_info["params"] = params
-
+                metrics = params["metrics"]
+                if model_type == "regression":
+                    project_info["mse"] = metrics["mse"]
+                elif model_type == "classification":
+                    project_info["accuracy"] = metrics["accuracy"]
+                elif model_type == "clustering":
+                    project_info["silhouette_score"] = metrics["silhouette"]   
             projects.append(project_info)
-
-    return render_template("dashboard.html", projects=projects)
+    
+    serialized_projects = convert_to_serializable(projects)
+    try:
+        json.dumps(serialized_projects)
+    except TypeError as e:
+        print("Élément non sérialisable :", e)
+    return jsonify(
+        {"success": True, "projects": serialized_projects, "user_id": user_id}
+    )
 
 
 @app.route("/register", methods=["GET", "POST"])
@@ -1144,21 +1174,25 @@ def select_features():
         else:
             return redirect(url_for("train_model"))
 
-import numpy as np
 
 def convert_to_serializable(obj):
-    if isinstance(obj, np.ndarray):
+    if isinstance(obj, pd.DataFrame):
+        return obj.to_dict(orient="records")
+    elif isinstance(obj, np.ndarray):
         return obj.tolist()
-    elif isinstance(obj, (np.int64, np.int32)):
+    elif isinstance(obj, (np.integer, int)):
         return int(obj)
-    elif isinstance(obj, (np.float64, np.float32)):
+    elif isinstance(obj, (np.floating, float)):
         return float(obj)
+    elif isinstance(obj, (np.bool_, bool)):
+        return bool(obj)
     elif isinstance(obj, list):
         return [convert_to_serializable(x) for x in obj]
     elif isinstance(obj, dict):
         return {k: convert_to_serializable(v) for k, v in obj.items()}
     else:
-        return obj
+        return str(obj)  # Dernier recours pour éviter les erreurs
+
 
 def to_native(val):
     """Convertit les types NumPy vers des types natifs Python."""
@@ -1253,11 +1287,11 @@ def train_model():
             X_test = params.get("X_test")
             if "X_train_columns" in params and params["X_train_columns"] is not None:
                 X_test = pd.DataFrame(X_test, columns=params["X_train_columns"])
-            predictions_serialize = model.predict(X_test)[:20]
+            predictions_serialize = model.predict(X_test)
             predictions = convert_to_serializable(predictions_serialize)
             if isinstance(predictions, pd.DataFrame):
                 predictions = predictions.values.tolist()
-            values = params.get("y_test", [])[:20]
+            values = params.get("y_test", [])
             if isinstance(values, pd.DataFrame):
                 values = values.values.tolist()
             predictions_values = list(zip(predictions, values))
@@ -1445,6 +1479,7 @@ def plot_results():
                 )
 
             # Prepare X_test for prediction
+
             X_test = params["X_test"]
             y_test = params["y_test"]
             # Save static image
@@ -1505,7 +1540,7 @@ def plot_results():
             # Réduire la dimensionnalité à 2 dimensions pour une meilleure visualisation
             pca = PCA(n_components=2)
             print(X_test.shape)
-            X_pca = pca.fit_transform(X_test.iloc[:20, :])
+            X_pca = pca.fit_transform(X_test)
             print(X_test.shape)
             # Prédictions des classes
 
@@ -1646,13 +1681,13 @@ def plot_results():
     )
 
 
-@app.route("/delete", methods=["POST"])
-def delete():
-    project_name = request.form.get("project_name")
+@app.route("/delete/<string:name>", methods=["POST"])
+def delete(name):
+    project_name = name
     user_id = session["user_id"]
     if not project_name:
         flash("Nom du projet invalide.", "error")
-        return redirect(url_for("error"))
+        return jsonify({"success": False, "error": "Project name is required."}), 400
 
     UPLOAD_FOLDER = current_app.config["UPLOAD_FOLDER"]
     project_folder = os.path.join(
@@ -1662,7 +1697,7 @@ def delete():
     print(f"user_{user_id}")
     if not project_folder.startswith(os.path.abspath(UPLOAD_FOLDER)):
         flash("Tentative de suppression non autorisée.", "error")
-        return redirect(url_for("error"))
+        return jsonify({"success": False, "error": "Unauthorized deletion attempt."}), 401
     if os.path.exists(project_folder):
         try:
             print(project_folder)
@@ -1673,7 +1708,7 @@ def delete():
     else:
         flash("Le projet n'existe pas.", "warning")
 
-    return redirect(url_for("dashboard"))
+    return jsonify({"success": True, "redirect_url": "/dashboard"})
 
 
 @app.route("/preprocessing/methods", methods=["GET", "POST"])

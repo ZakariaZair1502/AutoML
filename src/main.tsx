@@ -2,17 +2,14 @@ import React from 'react'
 import ReactDOM from 'react-dom/client'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 
-import SupervisedLearning from '@/pages/supervised'
-import UnsupervisedLearning from '@/pages/unsupervised'
 import SelectType from '@/pages/SelectType'
 import Evaluation from '@/pages/Evaluation'
-import Preprocessing from '@/pages/preprocessing'
-import Dashboard from '@/pages/dashboard'
+import Dashboard from '@/pages/Dashboard'
 import Login from '@/pages/Login'
-import Register from '@/pages/register'
+import Register from '@/pages/Register'
 import Results from '@/pages/Results'
-import Home from '@/pages/home'
-import UploadPage from '@/pages/upload'
+import Home from '@/pages/Home'
+import UploadPage from '@/pages/Upload'
 import Prediction from '@/pages/Prediction'
 import FeatureSelection from '@/pages/FeatureSelection'
 import ProjectDetails from '@/pages/ProjectDetails'
@@ -36,8 +33,9 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
         <Route path="/register" element={<Register />} />
         <Route path="/predict" element={<Prediction />} />
         <Route path="/select_features" element={<FeatureSelection />} />
-        <Route path="/project_details" element={<ProjectDetails />} />
-        /* <Route path="/plot_results" element={<Plot_results />} /> */
+        <Route path="/plot_results" element={<Plot_results />} />
+        <Route path="/project/:name" element={<ProjectDetails />} />
+
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>
