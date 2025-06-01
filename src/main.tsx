@@ -10,6 +10,8 @@ import Register from '@/pages/Register'
 import Results from '@/pages/Results'
 import Home from '@/pages/Home'
 import UploadPage from '@/pages/Upload'
+import Preprocessing from '@/pages/Preprocessing'
+import PreprocessingResults from '@/pages/PreprocessingResults'
 import Prediction from '@/pages/Prediction'
 import FeatureSelection from '@/pages/FeatureSelection'
 import ProjectDetails from '@/pages/ProjectDetails'
@@ -18,7 +20,11 @@ import './index.css'
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <BrowserRouter>
+    <BrowserRouter
+  future={{
+    v7_startTransition: true,v7_relativeSplatPath: true,
+  }}
+>
       <Routes>
         <Route path="/" element={<Login />} />
         <Route path="/upload" element={<UploadPage />} />
@@ -35,7 +41,8 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
         <Route path="/select_features" element={<FeatureSelection />} />
         <Route path="/plot_results" element={<Plot_results />} />
         <Route path="/project/:name" element={<ProjectDetails />} />
-
+        <Route path="/preprocessing/methods" element={<Preprocessing />} />
+        <Route path="/preprocessing/apply" element={<PreprocessingResults />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>

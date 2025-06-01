@@ -11,7 +11,7 @@ interface Project {
   name: string;
   type: string;
   dataset: string;
-  algorithm: string;
+  algo: string;
   accuracy?: number;
   mse?: number;
   silhouette_score?: number;
@@ -176,7 +176,7 @@ const Dashboard: React.FC = () => {
                 >
                   <td className="p-4 text-white">{project.name}</td>
                   <td className="p-4 text-gray-300">{project.type}</td>
-                  <td className="p-4 text-gray-300">{project.algorithm}</td>
+                  <td className="p-4 text-gray-300">{project.algo}</td>
                   <td className="p-4">
                     {project.accuracy !== undefined ? (
                       <span

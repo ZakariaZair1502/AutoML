@@ -10,6 +10,7 @@ from flask import (
     jsonify,
     send_file,
 )
+import pdfkit
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
 from sklearn.datasets import (
@@ -90,6 +91,9 @@ app.config["SECRET_KEY"] = "your_secret_key"
 db = SQLAlchemy(app)
 
 
+path_wkhtmltopdf = r"C:\Program Files\wkhtmltopdf\bin\wkhtmltopdf.exe"
+config = pdfkit.configuration(wkhtmltopdf=path_wkhtmltopdf)
+
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     fullname = db.Column(db.String(150), nullable=False)
@@ -110,6 +114,13 @@ with app.app_context():
 def allowed_file(filename):
     return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
 
+def preview(filename) :
+    df = pd.read_csv(filename)
+    preview = {
+        "columns": df.columns.tolist(),
+        "data": df.head(5).values.tolist(),
+    }
+    return preview
 
 @app.route("/preview_custom", methods=["POST"])
 def upload_dataset_preview():
@@ -122,7 +133,9 @@ def upload_dataset_preview():
         return jsonify({"error": "Nom de fichier vide"}), 400
 
     # Sauvegarder le fichier temporairement
-    file_path = os.path.join(UPLOAD_FOLDER, file.filename)
+    project_folder = os.path.join(UPLOAD_FOLDER, "temp")
+    os.makedirs(project_folder, exist_ok=True)
+    file_path = os.path.join(project_folder, file.filename)
     file.save(file_path)
 
     try:
@@ -465,21 +478,24 @@ def dashboard():
                 project_info["type"] = "preprocessing"
             else:
                 project_info["type"] = "clustering"
-            if project_info.get("algo"):
-                algo = project_info["algo"]
-                model_type = project_info["type"]
+            if project_info.get("type") != "preprocessing":
+                algo = project_info.get("algo","")
+                model_type = project_info.get("type", "")
+                print("---------------------------")
+                print("type",model_type)
                 filename = project_info["dataset"]
-                params_filename = f"{project_name}_{filename}_{algo}_params.pkl"
-                params_file = os.path.join(project_path, "params", params_filename)
-                params = jb.load(params_file)
-                project_info["params"] = params
-                metrics = params["metrics"]
-                if model_type == "regression":
-                    project_info["mse"] = metrics["mse"]
-                elif model_type == "classification":
-                    project_info["accuracy"] = metrics["accuracy"]
-                elif model_type == "clustering":
-                    project_info["silhouette_score"] = metrics["silhouette"]   
+                if model_type != "preprocessing":
+                    params_filename = f"{project_name}_{filename}_{algo}_params.pkl"
+                    params_file = os.path.join(project_path, "params", params_filename)
+                    params = jb.load(params_file)
+                    project_info["params"] = params
+                    metrics = params.get("metrics", {})
+                    if model_type == "regression":
+                        project_info["mse"] = metrics.get("mse", 0)
+                    elif model_type == "classification":
+                        project_info["accuracy"] = metrics.get("accuracy", 0)
+                    elif model_type == "clustering":
+                        project_info["silhouette_score"] = metrics.get("silhouette_score", 0)
             projects.append(project_info)
     
     serialized_projects = convert_to_serializable(projects)
@@ -663,19 +679,8 @@ def upload():
                 session["filename"] = filename
                 session["project_name"] = project_name
                 session["learning_type"] = learning_type
-
-                return (
-                    jsonify(
-                        {
-                            "status": "success",
-                            "message": "File uploaded successfully!",
-                            "preview": preview_data,
-                            "filename": filename,
-                            "redirect": "/select_type",
-                        }
-                    ),
-                    200,
-                )
+                session["user_id"] = user_id
+                
 
             except Exception as e:
                 if os.path.exists(file_path):
@@ -741,18 +746,7 @@ def upload():
                 session["project_name"] = project_name
                 session["learning_type"] = learning_type
 
-                return (
-                    jsonify(
-                        {
-                            "status": "success",
-                            "message": "Predefined dataset loaded successfully!",
-                            "preview": preview_data,
-                            "filename": filename,
-                            "redirect": "/select_type",
-                        }
-                    ),
-                    200,
-                )
+                
 
             except Exception as e:
                 return (
@@ -849,19 +843,6 @@ def upload():
                 session["project_name"] = project_name
                 session["learning_type"] = learning_type
 
-                return (
-                    jsonify(
-                        {
-                            "status": "success",
-                            "message": "Dataset generated successfully!",
-                            "preview": preview_data,
-                            "filename": filename,
-                            "redirect": "/select_type",
-                        }
-                    ),
-                    200,
-                )
-
             except Exception as e:
                 return (
                     jsonify(
@@ -872,7 +853,6 @@ def upload():
                     ),
                     500,
                 )
-
         else:
             return (
                 jsonify(
@@ -880,6 +860,23 @@ def upload():
                 ),
                 400,
             )
+        if learning_type == "preprocessing":
+            redirect = "/preprocessing/methods"
+        else :
+            redirect = "/select_type"
+        return (
+            jsonify(
+                {
+                    "status": "success",
+                    "message": "File uploaded successfully!",
+                    "preview": preview_data,
+                    "filename": filename,
+                    "redirect": redirect,
+                }
+            ),
+            200,
+        )
+        
 
     except Exception as e:
         return (
@@ -1155,7 +1152,7 @@ def select_features():
                         ),
                         400,
                     )
-                return jsonify({"success": True, "redirect": url_for("train_model")})
+                return jsonify({"success": True, "redirect": "/train_model"})
             else:
                 return jsonify({"success": True, "redirect": url_for("train_model")})
         # Fallback to form POST for legacy
@@ -1289,12 +1286,10 @@ def train_model():
                 X_test = pd.DataFrame(X_test, columns=params["X_train_columns"])
             predictions_serialize = model.predict(X_test)
             predictions = convert_to_serializable(predictions_serialize)
-            if isinstance(predictions, pd.DataFrame):
-                predictions = predictions.values.tolist()
-            values = params.get("y_test", [])
-            if isinstance(values, pd.DataFrame):
-                values = values.values.tolist()
-            predictions_values = list(zip(predictions, values))
+            print(type(predictions[0]))
+            values = params.get("y_test",[])
+            values = values.tolist() if isinstance(values, np.ndarray) else values
+            predictions_values = [(to_native(p), to_native(v)) for p, v in zip(predictions, values)]
         else:
             md, params = unsupervised_models.model_train(
                 filepath,
@@ -1714,18 +1709,35 @@ def delete(name):
 @app.route("/preprocessing/methods", methods=["GET", "POST"])
 def preprocessing_methods():
     # Vérifier si l'utilisateur est connecté
+    print("starting")
+    print("user",session.get("user_id"))
     if "user_id" not in session:
+        print("user not in session")
         flash("Veuillez vous connecter pour accéder au prétraitement.", "warning")
-        return redirect(url_for("login"))
+        return jsonify(
+            {
+                "success": False,
+                "error": "Unauthorized",
+                "redirect": "/",
+            }
+        )
 
     # Récupération des infos session
+    print("hello")
+
     user_id = session.get("user_id")
     project_name = session.get("project_name")
     filename = session.get("filename")
 
     if not project_name or not filename:
         flash("Informations de projet manquantes. Veuillez recommencer.")
-        return redirect(url_for("preprocessing_upload"))
+        return jsonify(
+            {
+                "success": False,
+                "error": "Missing project information. Please start over.",
+                "redirect": "/preprocessing",
+            }
+        )
 
     file_path = os.path.join(
         current_app.config["UPLOAD_FOLDER"],
@@ -1734,676 +1746,649 @@ def preprocessing_methods():
         "datasets",
         filename,
     )
-
+    print("hello")
     try:
         df = pd.read_csv(file_path)
 
         # Déterminer les types de colonnes
-        column_types = {
-            column: (
-                "numeric"
-                if pd.api.types.is_numeric_dtype(df[column])
-                else "categorical"
-            )
+        column_types = [
+            {
+                "name": column,
+                "type": "numeric" if pd.api.types.is_numeric_dtype(df[column]) else "categorical"
+            }
             for column in df.columns
-        }
-
-        return render_template(
-            "preprocessing_methods.html",
-            project_name=project_name,
-            filename=filename,
-            columns=df.columns.tolist(),
-            column_types=column_types,
+        ]
+        print(column_types)
+        return jsonify(
+            {
+                "success": True,
+                "column_types": column_types,
+                "redirect_url": "/preprocessing/methods",
+            }
         )
     except Exception as e:
         flash(f"Erreur lors du chargement du dataset : {str(e)}")
-        return render_template("error.html", error="Erreur de lecture du dataset.")
+        return jsonify(
+            {
+                "success": False,
+                "error": f"Error loading dataset: {str(e)}",
+                "redirect_url": "/preprocessing",
+            }
+        )
 
 
-@app.route("/preprocessing/apply", methods=["POST"])
+@app.route("/preprocessing/apply", methods=["POST","GET"])
 def preprocessing_apply():
     # Vérifier si l'utilisateur est connecté
     if "user_id" not in session:
         flash("Veuillez vous connecter pour accéder au prétraitement.", "warning")
-        return redirect(url_for("login"))
+        return jsonify({"success": False, "error": "Unauthorized"}), 401
 
     # Récupérer les informations de la session et du formulaire
     user_id = session["user_id"]
     project_name = session.get("project_name")
     filename = session.get("filename")
-    preprocessing_methods = request.form.getlist("preprocessing_methods")
-    print(preprocessing_methods)
+    project_dir = os.path.join(current_app.config["UPLOAD_FOLDER"], f"user_{user_id}", project_name)
+    
     if not project_name or not filename:
         flash("Informations de projet manquantes. Veuillez recommencer.")
-        return redirect(url_for("preprocessing_upload"))
+        return jsonify({"success": False, "error": "Project name or filename missing."}), 400
+    if request.method == "POST": 
+        data = request.get_json()
+        print("data : ",data)
+        preprocessing_methods = data.get("preprocessing_methods")
+        print("prepros methods : ",preprocessing_methods)
+    
+        if not preprocessing_methods:
+            flash("Veuillez sélectionner au moins une méthode de prétraitement.")
+            return jsonify({"success": False, "error": "No preprocessing methods selected."}), 400
+        user_folder = os.path.join(current_app.config["UPLOAD_FOLDER"], f"user_{user_id}")
+        file_path = os.path.join(user_folder, project_name, "datasets", filename)
+        preprocessing_viz_folder = os.path.join(
+            user_folder, project_name, "preprocessing_viz"
+        )
+        # Supprimer le dossier de visualisation si existant
+        if os.path.exists(preprocessing_viz_folder):
+            shutil.rmtree(preprocessing_viz_folder)
+        os.makedirs(preprocessing_viz_folder, exist_ok=True)
+        datasets_folder = os.path.join(user_folder, project_name, "datasets")
 
-    if not preprocessing_methods:
-        flash("Veuillez sélectionner au moins une méthode de prétraitement.")
-        return redirect(url_for("preprocessing_methods"))
+        try:
+            df = pd.read_csv(file_path)
+            print(df.shape)
+            original_df = df.copy()
+            applied_methods = []
 
-    # Charger le dataset
-    user_folder = os.path.join(current_app.config["UPLOAD_FOLDER"], f"user_{user_id}")
-    file_path = os.path.join(user_folder, project_name, "datasets", filename)
-    preprocessing_viz_folder = os.path.join(
-        user_folder, project_name, "preprocessing_viz"
-    )
-    datasets_folder = os.path.join(user_folder, project_name, "datasets")
+            # 1. Normalisation
+            if "normalization" in preprocessing_methods:
+                norm_method = data.get("normalization_method")
+                norm_columns = data.get("normalization_columns")
+                if norm_columns:
+                    if norm_method == "minmax":
+                        scaler = MinMaxScaler()
+                        df[norm_columns] = scaler.fit_transform(df[norm_columns])
+                    elif norm_method == "robust":
+                        scaler = RobustScaler()
+                        df[norm_columns] = scaler.fit_transform(df[norm_columns])
+                    elif norm_method == "maxabs":
+                        scaler = MaxAbsScaler()
+                        df[norm_columns] = scaler.fit_transform(df[norm_columns])
 
-    try:
-        df = pd.read_csv(file_path)
-        print(df.shape)
-        original_df = df.copy()
-        applied_methods = []
-
-        # 1. Normalisation
-        if "normalization" in preprocessing_methods:
-            norm_method = request.form.get("norm_method", "minmax")
-            norm_columns = request.form.getlist("norm_columns")
-            print("aaaa")
-            print(norm_columns)
-            if norm_columns:
-                if norm_method == "minmax":
-                    print(norm_columns)
-                    scaler = MinMaxScaler()
-                    df[norm_columns] = scaler.fit_transform(df[norm_columns])
-                    print(df[norm_columns])
-                elif norm_method == "robust":
-                    scaler = RobustScaler()
-                    df[norm_columns] = scaler.fit_transform(df[norm_columns])
-                elif norm_method == "maxabs":
-                    scaler = MaxAbsScaler()
-                    df[norm_columns] = scaler.fit_transform(df[norm_columns])
-
-                # Créer une visualisation avant/après
-                print("before plot")
-                plt.figure(figsize=(14, 6))
-                plt.subplot(1, 2, 1)
-                plt.title("Avant normalisation")
-                for col in norm_columns[:3]:  # Limiter à 3 colonnes pour la lisibilité
-                    sns.kdeplot(original_df[col], label=col)
-                plt.legend()
-
-                plt.subplot(1, 2, 2)
-                plt.title("Après normalisation")
-                for col in norm_columns[:3]:
-                    sns.kdeplot(df[col], label=col)
-                plt.legend()
-                print("before save plot")
-                viz_path = os.path.join(preprocessing_viz_folder, "normalization.png")
-                plt.tight_layout(pad=2.0)  # Augmenter l'espace entre les subplots
-                plt.savefig(
-                    viz_path, bbox_inches="tight"
-                )  # Assurer que tout est visible
-                plt.close()
-                print("after save plot")
-                applied_methods.append(
-                    {
-                        "name": "Normalisation",
-                        "params": {
-                            "Méthode": norm_method,
-                            "Colonnes": ", ".join(norm_columns),
-                        },
-                    }
-                )
-
-        # 2. Standardisation
-        if "standardization" in preprocessing_methods:
-            std_columns = request.form.getlist("std_columns")
-
-            if std_columns:
-                scaler = StandardScaler()
-                df[std_columns] = scaler.fit_transform(df[std_columns])
-
-                # Créer une visualisation avant/après
-                plt.figure(figsize=(14, 6))
-                plt.subplot(1, 2, 1)
-                plt.title("Avant standardisation")
-                for col in std_columns[:3]:
-                    sns.kdeplot(original_df[col], label=col)
-                plt.legend()
-
-                plt.subplot(1, 2, 2)
-                plt.title("Après standardisation")
-                for col in std_columns[:3]:
-                    sns.kdeplot(df[col], label=col)
-                plt.legend()
-
-                viz_path = os.path.join(preprocessing_viz_folder, "standardization.png")
-                plt.tight_layout(pad=2.0)  # Augmenter l'espace entre les subplots
-                plt.savefig(
-                    viz_path, bbox_inches="tight"
-                )  # Assurer que tout est visible
-                plt.close()
-
-                applied_methods.append(
-                    {
-                        "name": "Standardisation",
-                        "params": {"Colonnes": ", ".join(std_columns)},
-                    }
-                )
-
-        # 3. Gestion des valeurs manquantes
-        if "missing_values" in preprocessing_methods:
-            missing_strategy = request.form.get("missing_strategy", "mean")
-            missing_columns = request.form.getlist("missing_columns")
-            constant_value = request.form.get("constant_value", "0")
-
-            if missing_columns:
-                if missing_strategy == "drop":
-                    # Compter les lignes avant la suppression
-                    rows_before = len(df)
-                    df = df.dropna(subset=missing_columns)
-                    rows_after = len(df)
-                    rows_dropped = rows_before - rows_after
-
-                    applied_methods.append(
-                        {
-                            "name": "Gestion des valeurs manquantes",
-                            "params": {
-                                "Stratégie": "Suppression des lignes",
-                                "Colonnes": ", ".join(missing_columns),
-                                "Lignes supprimées": str(rows_dropped),
-                            },
-                        }
-                    )
-                else:
-                    # Utiliser SimpleImputer pour les autres stratégies
-                    if missing_strategy == "constant":
-                        imputer = SimpleImputer(
-                            strategy="constant", fill_value=constant_value
-                        )
-                        strategy_name = f"Valeur constante ({constant_value})"
-                    else:
-                        imputer = SimpleImputer(strategy=missing_strategy)
-                        strategy_name = {
-                            "mean": "Moyenne",
-                            "median": "Médiane",
-                            "most_frequent": "Valeur la plus fréquente",
-                        }[missing_strategy]
-
-                    df[missing_columns] = imputer.fit_transform(df[missing_columns])
-
-                    applied_methods.append(
-                        {
-                            "name": "Gestion des valeurs manquantes",
-                            "params": {
-                                "Stratégie": strategy_name,
-                                "Colonnes": ", ".join(missing_columns),
-                            },
-                        }
-                    )
-
-        # 4. Détection et traitement des outliers
-        if "outliers" in preprocessing_methods:
-            outlier_method = request.form.get("outlier_method", "zscore")
-            outlier_treatment = request.form.get("outlier_treatment", "remove")
-            outlier_columns = request.form.getlist("outlier_columns")
-
-            if outlier_columns:
-                outliers_detected = 0
-
-                for col in outlier_columns:
-                    if outlier_method == "zscore":
-                        # Z-score method
-                        z_scores = np.abs((df[col] - df[col].mean()) / df[col].std())
-                        outliers_mask = z_scores > 3
-                        outliers_detected += outliers_mask.sum()
-
-                        if outlier_treatment == "remove":
-                            df = df[~outliers_mask]
-                        elif outlier_treatment == "cap":
-                            # Capping
-                            upper_limit = df[col].mean() + 3 * df[col].std()
-                            lower_limit = df[col].mean() - 3 * df[col].std()
-                            df[col] = df[col].clip(lower=lower_limit, upper=upper_limit)
-                        elif outlier_treatment == "replace_mean":
-                            df.loc[outliers_mask, col] = df[col].mean()
-                        elif outlier_treatment == "replace_median":
-                            df.loc[outliers_mask, col] = df[col].median()
-
-                    elif outlier_method == "iqr":
-                        # IQR method
-                        Q1 = df[col].quantile(0.25)
-                        Q3 = df[col].quantile(0.75)
-                        IQR = Q3 - Q1
-                        lower_bound = Q1 - 1.5 * IQR
-                        upper_bound = Q3 + 1.5 * IQR
-                        outliers_mask = (df[col] < lower_bound) | (
-                            df[col] > upper_bound
-                        )
-                        outliers_detected += outliers_mask.sum()
-
-                        if outlier_treatment == "remove":
-                            df = df[~outliers_mask]
-                        elif outlier_treatment == "cap":
-                            df[col] = df[col].clip(lower=lower_bound, upper=upper_bound)
-                        elif outlier_treatment == "replace_mean":
-                            df.loc[outliers_mask, col] = df[col].mean()
-                        elif outlier_treatment == "replace_median":
-                            df.loc[outliers_mask, col] = df[col].median()
-
-                    elif outlier_method == "isolation_forest":
-                        # Isolation Forest
-                        iso_forest = IsolationForest(
-                            contamination=0.05, random_state=42
-                        )
-                        outliers_mask = iso_forest.fit_predict(df[[col]]) == -1
-                        outliers_detected += outliers_mask.sum()
-
-                        if outlier_treatment == "remove":
-                            df = df[~outliers_mask]
-                        elif outlier_treatment == "replace_mean":
-                            df.loc[outliers_mask, col] = df[col].mean()
-                        elif outlier_treatment == "replace_median":
-                            df.loc[outliers_mask, col] = df[col].median()
-
-                # Créer une visualisation pour les outliers (boxplot avant/après)
-                if outlier_columns:
-                    plt.figure(figsize=(12, 6))
-                    plt.subplot(4, 3, 1)
-                    plt.title("Avant traitement des outliers")
-                    sns.boxplot(data=original_df[outlier_columns[:3]])
-
-                    plt.subplot(4, 3, 2)
-                    plt.title("Après traitement des outliers")
-                    sns.boxplot(data=df[outlier_columns[:3]])
-
-                    viz_path = os.path.join(preprocessing_viz_folder, "outliers.png")
-                    plt.tight_layout()
-                    plt.savefig(viz_path)
-                    plt.close()
-
-                treatment_names = {
-                    "remove": "Suppression",
-                    "cap": "Plafonnement",
-                    "replace_mean": "Remplacement par la moyenne",
-                    "replace_median": "Remplacement par la médiane",
-                }
-
-                method_names = {
-                    "zscore": "Z-Score",
-                    "iqr": "IQR (Écart interquartile)",
-                    "isolation_forest": "Isolation Forest",
-                }
-
-                applied_methods.append(
-                    {
-                        "name": "Détection et traitement des outliers",
-                        "params": {
-                            "Méthode": method_names.get(outlier_method, outlier_method),
-                            "Traitement": treatment_names.get(
-                                outlier_treatment, outlier_treatment
-                            ),
-                            "Colonnes": ", ".join(outlier_columns),
-                            "Outliers détectés": str(outliers_detected),
-                        },
-                    }
-                )
-
-        # 5. Encodage des variables catégorielles
-        if "encoding" in preprocessing_methods:
-            encoding_method = request.form.get("encoding_method", "onehot")
-            encoding_columns = request.form.getlist("encoding_columns")
-
-            if encoding_columns:
-                if encoding_method == "onehot":
-                    # One-hot encoding
-                    df = pd.get_dummies(df, columns=encoding_columns, drop_first=False)
-                elif encoding_method == "label":
-                    # Label encoding
-                    for col in encoding_columns:
-                        le = LabelEncoder()
-                        df[col] = le.fit_transform(df[col].astype(str))
-                elif encoding_method == "ordinal":
-                    # Ordinal encoding
-                    oe = OrdinalEncoder()
-                    df[encoding_columns] = oe.fit_transform(
-                        df[encoding_columns].astype(str)
-                    )
-                elif encoding_method == "binary":
-                    # Binary encoding (utilisant get_dummies puis conversion en binaire)
-                    for col in encoding_columns:
-                        dummies = pd.get_dummies(df[col], prefix=col)
-                        df = pd.concat([df.drop(col, axis=1), dummies], axis=1)
-
-                method_names = {
-                    "onehot": "One-Hot Encoding",
-                    "label": "Label Encoding",
-                    "ordinal": "Ordinal Encoding",
-                    "binary": "Binary Encoding",
-                }
-
-                applied_methods.append(
-                    {
-                        "name": "Encodage des variables catégorielles",
-                        "params": {
-                            "Méthode": method_names.get(
-                                encoding_method, encoding_method
-                            ),
-                            "Colonnes": ", ".join(encoding_columns),
-                        },
-                    }
-                )
-
-        # 6. Sélection de caractéristiques
-        if "feature_selection" in preprocessing_methods:
-            feature_method = request.form.get("feature_method", "variance")
-            n_components = int(request.form.get("feature_n_components", 5))
-
-            # Sauvegarder les colonnes originales pour la visualisation
-            original_columns = df.columns.tolist()
-
-            if feature_method == "variance":
-                # Variance threshold
-                selector = VarianceThreshold(threshold=0.1)
-                numeric_cols = df.select_dtypes(include=["number"]).columns.tolist()
-                if numeric_cols:
-                    df_numeric = df[numeric_cols]
-                    selected_data = selector.fit_transform(df_numeric)
-                    selected_features = [
-                        numeric_cols[i]
-                        for i in range(len(numeric_cols))
-                        if i in selector.get_support(indices=True)
-                    ]
-
-                    # Reconstruire le dataframe avec les caractéristiques sélectionnées
-                    df = pd.DataFrame(selected_data, columns=selected_features)
-
-                    # Ajouter les colonnes non numériques si elles existent
-                    non_numeric_cols = [
-                        col for col in original_columns if col not in numeric_cols
-                    ]
-                    if non_numeric_cols:
-                        df = pd.concat([df, original_df[non_numeric_cols]], axis=1)
-
-            elif feature_method == "kbest":
-                # SelectKBest
-                if "target" in df.columns:
-                    X = df.drop("target", axis=1).select_dtypes(include=["number"])
-                    y = df["target"]
-
-                    if not X.empty:
-                        selector = SelectKBest(
-                            f_classif, k=min(n_components, X.shape[1])
-                        )
-                        selected_data = selector.fit_transform(X, y)
-                        selected_features = X.columns[selector.get_support()].tolist()
-
-                        # Reconstruire le dataframe
-                        new_df = pd.DataFrame(selected_data, columns=selected_features)
-                        new_df["target"] = y.values
-
-                        # Ajouter les colonnes non numériques si elles existent
-                        non_numeric_cols = [
-                            col
-                            for col in original_columns
-                            if col not in X.columns and col != "target"
-                        ]
-                        if non_numeric_cols:
-                            new_df = pd.concat(
-                                [new_df, original_df[non_numeric_cols]], axis=1
-                            )
-
-                        df = new_df
-
-            elif feature_method == "pca":
-                # PCA
-                numeric_cols = df.select_dtypes(include=["number"]).columns.tolist()
-                if numeric_cols:
-                    pca = PCA(n_components=min(n_components, len(numeric_cols)))
-                    pca_result = pca.fit_transform(df[numeric_cols])
-
-                    # Créer un nouveau dataframe avec les composantes principales
-                    pca_df = pd.DataFrame(
-                        pca_result,
-                        columns=[f"PC{i+1}" for i in range(pca_result.shape[1])],
-                    )
-
-                    # Ajouter les colonnes non numériques si elles existent
-                    non_numeric_cols = [
-                        col for col in df.columns if col not in numeric_cols
-                    ]
-                    if non_numeric_cols:
-                        pca_df = pd.concat([pca_df, df[non_numeric_cols]], axis=1)
-
-                    # Créer une visualisation de la variance expliquée
-                    plt.figure(figsize=(12, 6))
-                    plt.bar(
-                        range(1, len(pca.explained_variance_ratio_) + 1),
-                        pca.explained_variance_ratio_,
-                        alpha=0.8,
-                    )
-                    plt.step(
-                        range(1, len(pca.explained_variance_ratio_) + 1),
-                        np.cumsum(pca.explained_variance_ratio_),
-                        where="mid",
-                        label="Variance expliquée cumulée",
-                    )
-                    plt.xlabel("Composantes principales")
-                    plt.ylabel("Ratio de variance expliquée")
-                    plt.title("Variance expliquée par composante principale")
+                    # Créer une visualisation avant/après
+                    plt.figure(figsize=(14, 6))
+                    plt.subplot(1, 2, 1)
+                    plt.title("Before Normalization")
+                    for col in norm_columns[:2]:
+                        sns.kdeplot(original_df[col], label=col)
                     plt.legend()
 
-                    viz_path = os.path.join(
-                        preprocessing_viz_folder, "pca_variance.png"
+                    # Après normalisation
+                    plt.subplot(1, 2, 2)
+                    plt.title("After Normalization")
+                    for col in norm_columns[:2]:
+                        sns.kdeplot(df[col], label=f"{col} normalisé")
+                    plt.legend()
+
+                    
+                    viz_path = os.path.join(preprocessing_viz_folder, "normalization.png")
+                    plt.tight_layout(pad=2.0)  # Augmenter l'espace entre les subplots
+                    plt.savefig(
+                        viz_path, bbox_inches="tight"
+                    )  # Assurer que tout est visible
+                    plt.close()
+                    applied_methods.append(
+                        {
+                            "name": "Normalisation",
+                            "params": {
+                                "Method": norm_method,
+                                "Columns": ", ".join(norm_columns),
+                            },
+                        }
                     )
-                    plt.tight_layout()
-                    plt.savefig(viz_path)
+
+            # 2. Standardisation
+            if "standardization" in preprocessing_methods:
+                std_columns = data.get("standardization_columns")
+
+                if std_columns:
+                    scaler = StandardScaler()
+                    df[std_columns] = scaler.fit_transform(df[std_columns])
+
+                    # Créer une visualisation avant/après
+                    plt.figure(figsize=(14, 6))
+                    plt.subplot(1, 2,1)
+                    plt.title("Before standardization")
+                    for col in std_columns[:2]:
+                        sns.kdeplot(original_df[col], label=f"{col}")
+                    plt.legend()
+                    plt.subplot(1, 2,2)
+                    plt.title("After standardization")
+                    for col in std_columns[:2]:
+                        sns.kdeplot(df[col], label=f"{col} standarized")
+                    plt.legend()
+
+                    viz_path = os.path.join(preprocessing_viz_folder, "standardization.png")
+                    plt.tight_layout(pad=2.0)  # Augmenter l'espace entre les subplots
+                    plt.savefig(
+                        viz_path, bbox_inches="tight"
+                    )  # Assurer que tout est visible
                     plt.close()
 
-                    df = pca_df
-
-            method_names = {
-                "variance": "Seuil de variance",
-                "kbest": "SelectKBest",
-                "rfe": "Élimination récursive",
-                "pca": "Analyse en composantes principales (PCA)",
-            }
-
-            applied_methods.append(
-                {
-                    "name": "Sélection de caractéristiques",
-                    "params": {
-                        "Méthode": method_names.get(feature_method, feature_method),
-                        "Nombre de caractéristiques": str(n_components),
-                        "Caractéristiques sélectionnées": str(len(df.columns)),
-                    },
-                }
-            )
-
-        # 7. Transformation des données
-        if "transformation" in preprocessing_methods:
-            transform_method = request.form.get("transform_method", "log")
-            transform_columns = request.form.getlist("transform_columns")
-
-            if transform_columns:
-                # Vérifier que les colonnes existent dans le dataframe
-                transform_columns = [
-                    col for col in transform_columns if col in df.columns
-                ]
-
-                if transform_method == "log":
-                    # Log transformation (ajouter 1 pour éviter log(0))
-                    for col in transform_columns:
-                        # S'assurer que toutes les valeurs sont positives
-                        min_val = df[col].min()
-                        if min_val <= 0:
-                            df[col] = df[col] - min_val + 1
-                        df[col] = np.log(df[col])
-
-                elif transform_method == "sqrt":
-                    # Square root transformation
-                    for col in transform_columns:
-                        # S'assurer que toutes les valeurs sont positives
-                        min_val = df[col].min()
-                        if min_val < 0:
-                            df[col] = df[col] - min_val
-                        df[col] = np.sqrt(df[col])
-
-                elif transform_method == "boxcox":
-                    # Box-Cox transformation
-                    for col in transform_columns:
-                        # Box-Cox nécessite des valeurs strictement positives
-                        min_val = df[col].min()
-                        if min_val <= 0:
-                            df[col] = df[col] - min_val + 1
-
-                        # Appliquer Box-Cox
-                        try:
-                            transformer = PowerTransformer(method="box-cox")
-                            df[col] = transformer.fit_transform(df[[col]]).flatten()
-                        except Exception as e:
-                            # En cas d'erreur, utiliser Yeo-Johnson qui est plus flexible
-                            transformer = PowerTransformer(method="yeo-johnson")
-                            df[col] = transformer.fit_transform(df[[col]]).flatten()
-
-                elif transform_method == "yeo-johnson":
-                    # Yeo-Johnson transformation
-                    transformer = PowerTransformer(method="yeo-johnson")
-                    df[transform_columns] = transformer.fit_transform(
-                        df[transform_columns]
+                    applied_methods.append(
+                        {
+                            "name": "Standardisation",
+                            "params": {"Columns": ", ".join(std_columns)},
+                        }
                     )
 
-                # Créer une visualisation avant/après
-                plt.figure(figsize=(12, 6))
-                for i, col in enumerate(
-                    transform_columns[:2]
-                ):  # Limiter à 2 colonnes pour la lisibilité
-                    plt.subplot(4, 3, i * 2 + 1)
-                    plt.title(f"Avant transformation - {col}")
-                    sns.histplot(original_df[col], kde=True)
+            # 3. Gestion des valeurs manquantes
+            if "missing_values" in preprocessing_methods:
+                missing_strategy = data.get("missing_values_strategy", "mean")
+                missing_columns = data.get("missing_values_columns")
+                constant_value = data.get("missing_values_constant_value", "0")
 
-                    plt.subplot(4, 3, i * 2 + 2)
-                    plt.title(f"Après transformation - {col}")
-                    sns.histplot(df[col], kde=True)
+                if missing_columns:
+                    if missing_strategy == "drop":
+                        # Compter les lignes avant la suppression
+                        rows_before = len(df)
+                        df = df.dropna(subset=missing_columns)
+                        rows_after = len(df)
+                        rows_dropped = rows_before - rows_after
 
-                viz_path = os.path.join(preprocessing_viz_folder, "transformation.png")
-                plt.tight_layout()
-                plt.savefig(viz_path)
-                plt.close()
+                        applied_methods.append(
+                            {
+                                "name": "Gestion des valeurs manquantes",
+                                "params": {
+                                    "Stratégie": "Suppression des lignes",
+                                    "columns": ", ".join(missing_columns),
+                                    "Lignes supprimées": str(rows_dropped),
+                                },
+                            }
+                        )
+                    else:
+                        # Utiliser SimpleImputer pour les autres stratégies
+                        if missing_strategy == "constant":
+                            imputer = SimpleImputer(
+                                strategy="constant", fill_value=constant_value
+                            )
+                            strategy_name = f"Valeur constante ({constant_value})"
+                        else:
+                            imputer = SimpleImputer(strategy=missing_strategy)
+                            strategy_name = {
+                                "mean": "Moyenne",
+                                "median": "Médiane",
+                                "most_frequent": "Valeur la plus fréquente",
+                            }[missing_strategy]
+
+                        df[missing_columns] = imputer.fit_transform(df[missing_columns])
+
+                        applied_methods.append(
+                            {
+                                "name": "Gestion des valeurs manquantes",
+                                "params": {
+                                    "Stratégie": strategy_name,
+                                    "columns": ", ".join(missing_columns),
+                                },
+                            }
+                        )
+
+            # 4. Détection et traitement des outliers
+            if "outliers" in preprocessing_methods:
+                outlier_method = data.get("outliers_method", "zscore")
+                outlier_treatment = data.get("outliers_treatment", "remove")
+                outlier_columns = data.get("outliers_columns")
+
+                if outlier_columns:
+                    outliers_detected = 0
+
+                    for col in outlier_columns:
+                        if outlier_method == "zscore":
+                            # Z-score method
+                            z_scores = np.abs((df[col] - df[col].mean()) / df[col].std())
+                            outliers_mask = z_scores > 3
+                            outliers_detected += outliers_mask.sum()
+
+                            if outlier_treatment == "remove":
+                                df = df[~outliers_mask]
+                            elif outlier_treatment == "cap":
+                                # Capping
+                                upper_limit = df[col].mean() + 3 * df[col].std()
+                                lower_limit = df[col].mean() - 3 * df[col].std()
+                                df[col] = df[col].clip(lower=lower_limit, upper=upper_limit)
+                            elif outlier_treatment == "replace_mean":
+                                df.loc[outliers_mask, col] = df[col].mean()
+                            elif outlier_treatment == "replace_median":
+                                df.loc[outliers_mask, col] = df[col].median()
+
+                        elif outlier_method == "iqr":
+                            # IQR method
+                            Q1 = df[col].quantile(0.25)
+                            Q3 = df[col].quantile(0.75)
+                            IQR = Q3 - Q1
+                            lower_bound = Q1 - 1.5 * IQR
+                            upper_bound = Q3 + 1.5 * IQR
+                            outliers_mask = (df[col] < lower_bound) | (
+                                df[col] > upper_bound
+                            )
+                            outliers_detected += outliers_mask.sum()
+
+                            if outlier_treatment == "remove":
+                                df = df[~outliers_mask]
+                            elif outlier_treatment == "cap":
+                                df[col] = df[col].clip(lower=lower_bound, upper=upper_bound)
+                            elif outlier_treatment == "replace_mean":
+                                df.loc[outliers_mask, col] = df[col].mean()
+                            elif outlier_treatment == "replace_median":
+                                df.loc[outliers_mask, col] = df[col].median()
+
+                        elif outlier_method == "isolation_forest":
+                            # Isolation Forest
+                            iso_forest = IsolationForest(
+                                contamination=0.05, random_state=42
+                            )
+                            outliers_mask = iso_forest.fit_predict(df[[col]]) == -1
+                            outliers_detected += outliers_mask.sum()
+
+                            if outlier_treatment == "remove":
+                                df = df[~outliers_mask]
+                            elif outlier_treatment == "replace_mean":
+                                df.loc[outliers_mask, col] = df[col].mean()
+                            elif outlier_treatment == "replace_median":
+                                df.loc[outliers_mask, col] = df[col].median()
+
+                    # Créer une visualisation pour les outliers (boxplot avant/après)
+                    if outlier_columns:
+                        plt.figure(figsize=(14, 6))
+                        plt.subplot(1, 2, 1)
+                        plt.title("Before outliers treatement")
+                        sns.boxplot(data=original_df[outlier_columns[:3]])
+
+                        plt.subplot(1, 2, 2)
+                        plt.title("After outliers treatement")
+                        sns.boxplot(data=df[outlier_columns[:3]])
+
+                        viz_path = os.path.join(preprocessing_viz_folder, "outliers.png")
+                        plt.tight_layout()
+                        plt.savefig(viz_path)
+                        plt.close()
+
+                    treatment_names = {
+                        "remove": "Suppression",
+                        "cap": "Plafonnement",
+                        "replace_mean": "Remplacement par la moyenne",
+                        "replace_median": "Remplacement par la médiane",
+                    }
+
+                    method_names = {
+                        "zscore": "Z-Score",
+                        "iqr": "IQR (Écart interquartile)",
+                        "isolation_forest": "Isolation Forest",
+                    }
+
+                    applied_methods.append(
+                        {
+                            "name": "Détection et traitement des outliers",
+                            "params": {
+                                "Méthode": method_names.get(outlier_method, outlier_method),
+                                "Traitement": treatment_names.get(
+                                    outlier_treatment, outlier_treatment
+                                ),
+                                "columns": ", ".join(outlier_columns),
+                                "Outliers détectés": str(outliers_detected),
+                            },
+                        }
+                    )
+
+            # 5. Encodage des variables catégorielles
+            if "encoding" in preprocessing_methods:
+                encoding_method = data.get("encoding_method", "onehot")
+                encoding_columns = data.get("encoding_columns")
+
+                if encoding_columns:
+                    if encoding_method == "onehot":
+                        # One-hot encoding
+                        df = pd.get_dummies(df, columns=encoding_columns, drop_first=False)
+                    elif encoding_method == "label":
+                        # Label encoding
+                        for col in encoding_columns:
+                            le = LabelEncoder()
+                            df[col] = le.fit_transform(df[col].astype(str))
+                    elif encoding_method == "ordinal":
+                        # Ordinal encoding
+                        oe = OrdinalEncoder()
+                        df[encoding_columns] = oe.fit_transform(
+                            df[encoding_columns].astype(str)
+                        )
+                    elif encoding_method == "binary":
+                        # Binary encoding (utilisant get_dummies puis conversion en binaire)
+                        for col in encoding_columns:
+                            dummies = pd.get_dummies(df[col], prefix=col)
+                            df = pd.concat([df.drop(col, axis=1), dummies], axis=1)
+
+                    method_names = {
+                        "onehot": "One-Hot Encoding",
+                        "label": "Label Encoding",
+                        "ordinal": "Ordinal Encoding",
+                        "binary": "Binary Encoding",
+                    }
+
+                    applied_methods.append(
+                        {
+                            "name": "Encodage des variables catégorielles",
+                            "params": {
+                                "Méthode": method_names.get(
+                                    encoding_method, encoding_method
+                                ),
+                                "columns": ", ".join(encoding_columns),
+                            },
+                        }
+                    )
+
+            # 6. Sélection de caractéristiques
+            if "feature_selection" in preprocessing_methods:
+                feature_method = data.get("feature_selection_method", "variance")
+                n_components = int(data.get("feature_selection_n_components", 5))
+
+                # Sauvegarder les columns originales pour la visualisation
+                original_columns = df.columns.tolist()
+
+                if feature_method == "variance":
+                    # Variance threshold
+                    selector = VarianceThreshold(threshold=0.1)
+                    numeric_cols = df.select_dtypes(include=["number"]).columns.tolist()
+                    if numeric_cols:
+                        df_numeric = df[numeric_cols]
+                        selected_data = selector.fit_transform(df_numeric)
+                        selected_features = [
+                            numeric_cols[i]
+                            for i in range(len(numeric_cols))
+                            if i in selector.get_support(indices=True)
+                        ]
+
+                        # Reconstruire le dataframe avec les caractéristiques sélectionnées
+                        df = pd.DataFrame(selected_data, columns=selected_features)
+
+                        # Ajouter les columns non numériques si elles existent
+                        non_numeric_cols = [
+                            col for col in original_columns if col not in numeric_cols
+                        ]
+                        if non_numeric_cols:
+                            df = pd.concat([df, original_df[non_numeric_cols]], axis=1)
+
+                elif feature_method == "kbest":
+                    # SelectKBest
+                    if "target" in df.columns:
+                        X = df.drop("target", axis=1).select_dtypes(include=["number"])
+                        y = df["target"]
+
+                        if not X.empty:
+                            selector = SelectKBest(
+                                f_classif, k=min(n_components, X.shape[1])
+                            )
+                            selected_data = selector.fit_transform(X, y)
+                            selected_features = X.columns[selector.get_support()].tolist()
+
+                            # Reconstruire le dataframe
+                            new_df = pd.DataFrame(selected_data, columns=selected_features)
+                            new_df["target"] = y.values
+
+                            # Ajouter les columns non numériques si elles existent
+                            non_numeric_cols = [
+                                col
+                                for col in original_columns
+                                if col not in X.columns and col != "target"
+                            ]
+                            if non_numeric_cols:
+                                new_df = pd.concat(
+                                    [new_df, original_df[non_numeric_cols]], axis=1
+                                )
+
+                            df = new_df
+
+                elif feature_method == "pca":
+                    # PCA
+                    numeric_cols = df.select_dtypes(include=["number"]).columns.tolist()
+                    if numeric_cols:
+                        pca = PCA(n_components=min(n_components, len(numeric_cols)))
+                        pca_result = pca.fit_transform(df[numeric_cols])
+
+                        # Créer un nouveau dataframe avec les composantes principales
+                        pca_df = pd.DataFrame(
+                            pca_result,
+                            columns=[f"PC{i+1}" for i in range(pca_result.shape[1])],
+                        )
+
+                        # Ajouter les columns non numériques si elles existent
+                        non_numeric_cols = [
+                            col for col in df.columns if col not in numeric_cols
+                        ]
+                        if non_numeric_cols:
+                            pca_df = pd.concat([pca_df, df[non_numeric_cols]], axis=1)
+
+                        # Créer une visualisation de la variance expliquée
+                        plt.figure(figsize=(12, 6))
+                        plt.bar(
+                            range(1, len(pca.explained_variance_ratio_) + 1),
+                            pca.explained_variance_ratio_,
+                            alpha=0.8,
+                        )
+                        plt.step(
+                            range(1, len(pca.explained_variance_ratio_) + 1),
+                            np.cumsum(pca.explained_variance_ratio_),
+                            where="mid",
+                            label="Variance expliquée cumulée",
+                        )
+                        plt.xlabel("Composantes principales")
+                        plt.ylabel("Ratio de variance expliquée")
+                        plt.title("Variance expliquée par composante principale")
+                        plt.legend()
+
+                        viz_path = os.path.join(
+                            preprocessing_viz_folder, "pca_variance.png"
+                        )
+                        plt.tight_layout()
+                        plt.savefig(viz_path)
+                        plt.close()
+
+                        df = pca_df
 
                 method_names = {
-                    "log": "Logarithmique",
-                    "sqrt": "Racine carrée",
-                    "boxcox": "Box-Cox",
-                    "yeo-johnson": "Yeo-Johnson",
+                    "variance": "Seuil de variance",
+                    "kbest": "SelectKBest",
+                    "rfe": "Élimination récursive",
+                    "pca": "Analyse en composantes principales (PCA)",
                 }
 
                 applied_methods.append(
                     {
-                        "name": "Transformation des données",
+                        "name": "Sélection de caractéristiques",
                         "params": {
-                            "Méthode": method_names.get(
-                                transform_method, transform_method
-                            ),
-                            "Colonnes": ", ".join(transform_columns),
+                            "Méthode": method_names.get(feature_method, feature_method),
+                            "Nombre de caractéristiques": str(n_components),
+                            "Caractéristiques sélectionnées": str(len(df.columns)),
                         },
                     }
                 )
 
-        # Sauvegarder le dataframe prétraité
-        print(applied_methods)
-        preprocessed_file_path = os.path.join(
-            datasets_folder, f"preprocessed_{filename}"
-        )
-        df.to_csv(preprocessed_file_path, index=False)
-        session["preprocessed_filename"] = f"preprocessed_{filename}"
+            # 7. Transformation des données
+            if "transformation" in preprocessing_methods:
+                transform_method = data.get("transformation_method", "log")
+                transform_columns = data.get("transformation_columns")
 
-        # Calculer les statistiques pour le tableau de bord
-        stats = {
-            "rows": len(df),
-            "columns": len(df.columns),
-            "missing_values": df.isna().sum().sum(),
-            "memory_usage": f"{df.memory_usage(deep=True).sum() / (1024 * 1024):.2f} MB",
-        }
+                if transform_columns:
+                    # Vérifier que les columns existent dans le dataframe
+                    transform_columns = [
+                        col for col in transform_columns if col in df.columns
+                    ]
 
-        # Préparer les données pour l'aperçu
-        preview_data = df.head(10).values.tolist()
+                    if transform_method == "log":
+                        # Log transformation (ajouter 1 pour éviter log(0))
+                        for col in transform_columns:
+                            # S'assurer que toutes les valeurs sont positives
+                            min_val = df[col].min()
+                            if min_val <= 0:
+                                df[col] = df[col] - min_val + 1
+                            df[col] = np.log(df[col])
 
-        # Préparer les visualisations pour le tableau de bord
-        data_visualizations = []
-        for viz_file in os.listdir(preprocessing_viz_folder):
-            if viz_file.endswith(".png"):
-                viz_title = viz_file.replace(".png", "").replace("_", " ").title()
-                data_visualizations.append(
-                    {
-                        "title": viz_title,
-                        "image_path": url_for(
-                            "static",
-                            filename=f"projects/user_{user_id}/{project_name}/preprocessing_viz/{viz_file}",
-                        ),
+                    elif transform_method == "sqrt":
+                        # Square root transformation
+                        for col in transform_columns:
+                            # S'assurer que toutes les valeurs sont positives
+                            min_val = df[col].min()
+                            if min_val < 0:
+                                df[col] = df[col] - min_val
+                            df[col] = np.sqrt(df[col])
+
+                    elif transform_method == "boxcox":
+                        # Box-Cox transformation
+                        for col in transform_columns:
+                            # Box-Cox nécessite des valeurs strictement positives
+                            min_val = df[col].min()
+                            if min_val <= 0:
+                                df[col] = df[col] - min_val + 1
+
+                            # Appliquer Box-Cox
+                            try:
+                                transformer = PowerTransformer(method="box-cox")
+                                df[col] = transformer.fit_transform(df[[col]]).flatten()
+                            except Exception as e:
+                                # En cas d'erreur, utiliser Yeo-Johnson qui est plus flexible
+                                transformer = PowerTransformer(method="yeo-johnson")
+                                df[col] = transformer.fit_transform(df[[col]]).flatten()
+
+                    elif transform_method == "yeo-johnson":
+                        # Yeo-Johnson transformation
+                        transformer = PowerTransformer(method="yeo-johnson")
+                        df[transform_columns] = transformer.fit_transform(
+                            df[transform_columns]
+                        )
+
+                    # Créer une visualisation avant/après
+                    plt.figure(figsize=(16, 6))
+                    cols_to_plot = transform_columns[:2]  # max 2 columns
+
+                    for i, col in enumerate(cols_to_plot):
+                        plt.subplot(1, 2 * len(cols_to_plot), 2 * i + 1)
+                        plt.title(f"Before transformation - {col}")
+                        sns.histplot(original_df[col], kde=True)
+
+                        plt.subplot(1, 2 * len(cols_to_plot), 2 * i + 2)
+                        plt.title(f"After transformation - {col}")
+                        sns.histplot(df[col], kde=True)
+
+                    viz_path = os.path.join(preprocessing_viz_folder, "transformation.png")
+                    plt.tight_layout()
+                    plt.savefig(viz_path)
+                    plt.close()
+
+                    method_names = {
+                        "log": "Logarithmique",
+                        "sqrt": "Racine carrée",
+                        "boxcox": "Box-Cox",
+                        "yeo-johnson": "Yeo-Johnson",
                     }
-                )
 
-        return render_template(
-            "preprocessing_result.html",
-            project_name=project_name,
-            filename=f"preprocessed_{filename}",
-            columns=df.columns.tolist(),
-            preview_data=preview_data,
-            applied_methods=applied_methods,
-            stats=stats,
-            data_visualizations=data_visualizations,
-        )
+                    applied_methods.append(
+                        {
+                            "name": "Transformation des données",
+                            "params": {
+                                "Méthode": method_names.get(
+                                    transform_method, transform_method
+                                ),
+                                "columns": ", ".join(transform_columns),
+                            },
+                        }
+                    )
 
-    except Exception as e:
-        flash(f"Erreur lors du prétraitement: {str(e)}", "danger")
-        # Rediriger vers la page des méthodes de prétraitement au lieu d'afficher une page d'erreur
-        return redirect(url_for("preprocessing_methods"))
+            # Sauvegarder le dataframe prétraité
+            preprocessed_file_path = os.path.join(
+                datasets_folder, f"preprocessed_{filename}"
+            )
+            df.to_csv(preprocessed_file_path, index=False)
+            preview_dataset = preview(preprocessed_file_path)
+            session["preprocessed_filename"] = f"preprocessed_{filename}"
+
+            # Calculer les statistiques pour le tableau de bord
+            stats = {
+                "rows": len(df),
+                "columns": len(df.columns),
+                "missing_values": df.isna().sum().sum(),
+                "memory_usage": f"{df.memory_usage(deep=True).sum() / (1024 * 1024):.2f} MB",
+            }
+
+            # Préparer les données pour l'aperçu
+            # Préparer les visualisations pour le tableau de bord
+            data_visualizations = []
+            for viz_file in os.listdir(preprocessing_viz_folder):
+                if viz_file.endswith(".png"):
+                    viz_title = viz_file.replace(".png", "").replace("_", " ").title()
+                    data_visualizations.append(
+                        {
+                            "title": viz_title,
+                            "image_path":
+                                f"/backend/static/projects/user_{user_id}/{project_name}/preprocessing_viz/{viz_file}",
+                        }
+                    )
+            result_path = os.path.join(project_dir, "preprocessing_results.json")
+            with open(result_path, "w") as f:
+                json.dump({
+                    "applied_methods": convert_to_serializable(applied_methods),
+                    "stats": convert_to_serializable(stats),
+                    "visualizations": data_visualizations,
+                    "preview_data": preview_dataset,
+                }, f, indent=2)
+            report_file_path = os.path.join(project_dir, "report.html")
+            report_file_path = create_report(project_name, report_file_path,preprocessed_file_path)
+            print("Report file path:", report_file_path)
+            session["report_file_path"] = report_file_path
+            return jsonify({
+                "success": True
+            })
+        except Exception as e:
+            flash(f"Erreur lors du prétraitement: {str(e)}", "danger")
+            # Rediriger vers la page des méthodes de prétraitement au lieu d'afficher une page d'erreur
+            return jsonify({"success": False, "error": str(e)})
+    elif request.method == 'GET' : 
+        result_path = os.path.join(project_dir, "preprocessing_results.json")
+        if not os.path.exists(result_path):
+            return jsonify({"success": False, "error": "No preprocessing results found"}), 404
+
+        with open(result_path, "r") as f:
+            data = json.load(f)
+
+        return jsonify({
+            "success": True,
+            **data
+        })
 
 
-@app.route("/preprocessing/save", methods=["POST"])
-def save_preprocessed_data():
-    # Vérifier si l'utilisateur est connecté
-    if "user_id" not in session:
-        flash("Veuillez vous connecter pour sauvegarder les données.", "warning")
-        return redirect(url_for("login"))
 
-    # Récupérer les informations de la session et du formulaire
-    user_id = session["user_id"]
-    project_name = request.form.get("project_name")
-    filename = request.form.get("filename")
-
-    if not project_name or not filename:
-        flash("Informations de projet manquantes. Veuillez recommencer.")
-        return redirect(url_for("dashboard"))
-
+def create_report(project_name, report_file_path,preprocessed_file_path):
     try:
-        # Chemins des dossiers
-        UPLOAD_FOLDER = current_app.config["UPLOAD_FOLDER"]
-        user_folder = os.path.join(UPLOAD_FOLDER, f"user_{user_id}")
-        project_folder = os.path.join(user_folder, project_name)
-        datasets_folder = os.path.join(project_folder, "datasets")
-
-        # Vérifier si le fichier prétraité existe
-        preprocessed_file_path = os.path.join(datasets_folder, filename)
-        if not os.path.exists(preprocessed_file_path):
-            flash("Le fichier prétraité est introuvable.")
-            return redirect(url_for("dashboard"))
-
         # Charger le dataset prétraité
         df = pd.read_csv(preprocessed_file_path)
-
-        # Créer un dossier pour les datasets finaux s'il n'existe pas
-        final_datasets_folder = os.path.join(project_folder, "final_datasets")
-        os.makedirs(final_datasets_folder, exist_ok=True)
-
-        # Sauvegarder le dataset prétraité dans le dossier final
-        final_filename = f"final_{filename}"
-        final_file_path = os.path.join(final_datasets_folder, final_filename)
-        df.to_csv(final_file_path, index=False)
-
-        # Mettre à jour la session avec le nom du fichier final
-        session["final_filename"] = final_filename
-
-        # Générer un rapport de prétraitement
-        report_folder = os.path.join(project_folder, "reports")
-        os.makedirs(report_folder, exist_ok=True)
-
-        report_file_path = os.path.join(
-            report_folder, f"preprocessing_report_{project_name}.html"
-        )
-
+        filename = os.path.basename(preprocessed_file_path)
+        final_filename = filename.replace("preprocessed_", "")
         # Créer un rapport HTML simple
         with open(report_file_path, "w") as f:
             f.write("<html><head><title>Preprocessing Report</title>")
@@ -2440,41 +2425,29 @@ def save_preprocessed_data():
 
             f.write("</body></html>")
 
-        flash("Dataset prétraité sauvegardé avec succès! Un rapport a été généré.")
-        return send_file(report_file_path)
-
+        return report_file_path
     except Exception as e:
-        flash(f"Erreur lors de la sauvegarde du dataset: {str(e)}")
-        return redirect(url_for("dashboard"))
+        flash(f"Erreur lors de la création du rapport: {str(e)}", "danger")
+        return None
 
 
-@app.route("/preprocessing/report")
+@app.route("/preprocessing/report",methods=['GET'])
 def preprocessing_report():
-    # Récupérer les informations de la session
     user_id = session.get("user_id")
     project_name = session.get("project_name")
 
     if not user_id or not project_name:
-        flash(
-            "Veuillez vous connecter pour accéder au rapport de prétraitement.",
-            "warning",
-        )
-        return redirect(url_for("login"))
+        return jsonify({"success": False, "error": "Veuillez vous connecter."}), 401
 
-    # Chemin vers le rapport de prétraitement
-    report_folder = os.path.join(
-        current_app.config["UPLOAD_FOLDER"], f"user_{user_id}", project_name, "reports"
-    )
-    os.makedirs(report_folder, exist_ok=True)
-    report_file_path = os.path.join(
-        report_folder, f"preprocessing_report_{project_name}.html"
-    )
+    html_path = session.get("report_file_path")
+    if not html_path or not os.path.exists(html_path):
+        return jsonify({"success": False, "error": "Rapport introuvable."}), 404
 
-    if not os.path.exists(report_file_path):
-        flash("Le rapport de prétraitement n'a pas été généré.", "warning")
-        return render_template("error.html")
+    pdf_path = html_path.replace(".html", ".pdf")
+    pdfkit.from_file(html_path, pdf_path, configuration=config)
 
-    return send_file(report_file_path)
+    print("Report file path:", pdf_path)
+    return send_file(html_path, as_attachment = True, download_name="preprocessing_report.html", mimetype="text/html")
 
 
 @app.route("/predict_page", methods = ['POST','GET'])

@@ -74,6 +74,7 @@ const UploadPage: React.FC = () => {
     } else if (path.includes("/unsupervised")) {
       setLearningType("unsupervised");
     } else if (path.includes("/preprocessing")) {
+      console.log("Preprocessing page");
       setLearningType("preprocessing");
     }
   }, [location]);
@@ -156,6 +157,7 @@ const UploadPage: React.FC = () => {
     formData.append("dataset", file);
     
     // Envoyer le fichier au backend pour prévisualisation
+    
     fetch("http://localhost:5000/preview_custom", {
       method: "POST",
       credentials: "include",
@@ -367,10 +369,12 @@ const UploadPage: React.FC = () => {
     }
 
     try {
+      console.log("FormData preview:");
+      for (const pair of formData.entries()) {
+        console.log(`${pair[0]}:`, pair[1]);
+      }
       const response = await fetch("http://localhost:5000/project", {
         method: "POST",
-        // Ne pas définir le header Content-type pour FormData
-        // Le navigateur le définira automatiquement avec la boundary nécessaire
         credentials: "include",
         body: formData,
       });
@@ -394,9 +398,11 @@ const UploadPage: React.FC = () => {
           setPreviewData(responseData.preview);
         }
         localStorage.setItem("learning_type", learningType);
+        console.log("Learning type set:", learningType);
         // Handle redirection if provided by the backend
         if (responseData.redirect) {
           // Navigate to the specified route
+          console.log("Redirecting to:", responseData.redirect);
           navigate(responseData.redirect);
           return;
         }

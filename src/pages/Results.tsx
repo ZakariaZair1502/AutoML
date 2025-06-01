@@ -24,6 +24,14 @@ const Results: React.FC = () => {
         if (!response.ok) throw new Error('Failed to fetch model info');
         const data = await response.json();
         if (data.success && data.model_info) {
+          // À faire juste après le fetch
+        const parsedPredictions = data.model_info.predictions_values.map((val: string) => {
+          const cleaned = val.replace(/[()]/g, '');
+          const [a, b] = cleaned.split(',').map(Number);
+          return [a, b];
+        });
+        data.model_info.predictions_values = parsedPredictions;
+
           localStorage.setItem('modelInfo', JSON.stringify(data.model_info));
           console.log(data.model_info);
           setModelInfo(data.model_info);
@@ -91,33 +99,35 @@ const Results: React.FC = () => {
             </div>
             {/* Predictions Table */}
             {Array.isArray(predictions_values) && predictions_values.length > 0 ? (
-              <div className="space-y-4">
-                <h2 className="text-2xl font-semibold text-white">
-                  {learning_type === 'unsupervised' ? 'X vs Predicted Classes' : 'Predictions vs Actual Values'}
-                </h2>
-                <div className="bg-white/5 rounded-lg overflow-hidden">
-                  <Table>
-                    <TableHeader>
-                      <TableRow className="border-white/10">
-                        <TableHead className="text-gray-200">
-                          {learning_type === 'unsupervised' ? 'X' : 'Prediction'}
-                        </TableHead>
-                        <TableHead className="text-gray-200">
-                          {learning_type === 'unsupervised' ? 'Class' : 'Actual Value'}
-                        </TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {predictions_values.slice(0, 10).map((item: any, index: number) => (
-                        <TableRow key={index} className="border-white/10">
-                          <TableCell className="text-gray-300">{Array.isArray(item) ? item[0] : item.prediction}</TableCell>
-                          <TableCell className="text-gray-300">{Array.isArray(item) ? item[1] : item.actual}</TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
-              </div>
+  <div className="space-y-4">
+    <h2 className="text-2xl font-semibold text-white">
+      {learning_type === 'unsupervised'
+        ? 'X vs Predicted Classes'
+        : 'Predictions vs Actual Values'}
+    </h2>
+    <div className="bg-white/5 rounded-lg overflow-hidden">
+      <Table>
+        <TableHeader>
+          <TableRow className="border-white/10">
+            <TableHead className="text-gray-200">
+              {learning_type === 'unsupervised' ? 'X' : 'Prediction'}
+            </TableHead>
+            <TableHead className="text-gray-200">
+              {learning_type === 'unsupervised' ? 'Class' : 'Actual Value'}
+            </TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {predictions_values.slice(0, 10).map((item: any, index: number) => (
+            <TableRow key={index} className="border-white/10">
+              <TableCell className="text-gray-300">{item[0]}</TableCell>
+              <TableCell className="text-gray-300">{item[1]}</TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </div>
+  </div>
             ) : (
               <p className="text-gray-400 text-center py-8">No predictions available.</p>
             )}
