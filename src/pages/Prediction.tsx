@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import {useNavigate} from 'react-router-dom';
+import {useNavigate, useLocation} from 'react-router-dom';
 import { CustomCard, CustomCardHeader, CustomCardBody } from '@/components/ui/custom-card';
 import { Form, FormGroup, FormLabel, FormInput } from '@/components/ui/custom-form';
 import { CustomButton } from '@/components/ui/custom-button';
@@ -32,37 +32,20 @@ const Prediction = () => {
   const [predictionResult, setPredictionResult] = useState<PredictionResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const location = useLocation();
 
   useEffect(() => {
-    // Get model info from localStorage or URL params
-    const model_info = localStorage.getItem('modelInfo') || '';
-    let storedInfo: ModelInfo = {
-      filename: '',
-      algo: '',
-      model_type: '',
-      project_name: '',
-      learning_type: ''
-    };
+    const model_info = location.state?.modelInfo;
     if (model_info) {
       try {
-        const parsedInfo = JSON.parse(model_info);
-        storedInfo = {
-          filename: parsedInfo.filename || '',
-          algo: parsedInfo.algo || '',
-          model_type: parsedInfo.model_type || '',
-          project_name: parsedInfo.project_name || '',
-          learning_type: parsedInfo.learning_type || ''
-        };
+        const parsedInfo = model_info;
+        setModelInfo(parsedInfo);
+        fetchFeatures(parsedInfo);
       } catch (err) {
-        console.error("Erreur lors du parsing de modelInfo depuis localStorage", err);
+        console.error("Erreur parsing", err);
       }
-    }
-    console.log('Stored Info:', storedInfo);
-    setModelInfo(storedInfo);
-
-    // Fetch features from backend
-    if (storedInfo.filename && storedInfo.algo) {
-      fetchFeatures(storedInfo);
+    }else{
+      console.error("modelInfo not sent from previous page");
     }
   }, []);
 

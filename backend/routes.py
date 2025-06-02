@@ -295,64 +295,6 @@ def project_details(name):
             project_info["dataset"] = dataset_files[0]
 
     # Récupérer le modèle et ses paramètres
-    models_folder = os.path.join(project_path, "models")
-    if os.path.exists(models_folder):
-        model_files = [f for f in os.listdir(models_folder) if f.endswith("_model.pkl")]
-        if model_files:
-            project_info["algo"] = model_files[0].replace("_model.pkl", "")
-            params_folder = os.path.join(
-                UPLOAD_FOLDER, f"user_{user_id}", project_name, "params"
-            )
-            filename = project_info["dataset"]
-            algo = project_info["algo"]
-            params_filename = f"{project_name}_{filename}_{algo}_params.pkl"
-            params_path = os.path.join(params_folder, params_filename)
-            params = jb.load(params_path)
-            project_info["params"] = params
-
-    # Récupérer les visualisations
-    if os.path.exists(os.path.join(project_path, "classification_clusters")):
-        clusters_folder = os.path.join(project_path, "classification_clusters")
-        clusters = [
-            f for f in os.listdir(clusters_folder) if f.endswith("_clusters.png")
-        ]
-        if clusters:
-            project_info["clusters"] = url_for(
-                "static",
-                filename=f"projects/user_{user_id}/{project_name}/classification_clusters/{clusters[0]}",
-            )
-    elif os.path.exists(os.path.join(project_path, "error_curve")):
-        error_curve_folder = os.path.join(project_path, "error_curve")
-        error_curves = [
-            f for f in os.listdir(error_curve_folder) if f.endswith("_error_curve.png")
-        ]
-        if error_curves:
-            project_info["error_curve"] = url_for(
-                "static",
-                filename=f"projects/user_{user_id}/{project_name}/error_curve/{error_curves[0]}",
-            )
-    elif os.path.exists(os.path.join(project_path, "unsupervised_clusters")):
-        clusters_folder = os.path.join(project_path, "unsupervised_clusters")
-        clusters = [
-            f
-            for f in os.listdir(clusters_folder)
-            if f.endswith("_unsupervised_clusters.png")
-        ]
-        if clusters:
-            project_info["clusters"] = url_for(
-                "static",
-                filename=f"projects/user_{user_id}/{project_name}/unsupervised_clusters/{clusters[0]}",
-            )
-    elif os.path.exists(os.path.join(project_path, "preprocessing_viz")):
-        viz_folder = os.path.join(project_path, "preprocessing_viz")
-        viz_files = [f for f in os.listdir(viz_folder) if f.endswith(".png")]
-        if viz_files:
-            project_info["preprocessing_viz"] = url_for(
-                "static",
-                filename=f"projects/user_{user_id}/{project_name}/preprocessing_viz/{viz_files[0]}",
-            )
-
-    # Déterminer le type de projet
     if os.path.exists(os.path.join(project_path, "error_curve")):
         project_info["type"] = "regression"
     elif os.path.exists(os.path.join(project_path, "classification_clusters")):
@@ -361,6 +303,53 @@ def project_details(name):
         project_info["type"] = "preprocessing"
     else:
         project_info["type"] = "clustering"
+    if project_info["type"] != 'preprocessing':
+        models_folder = os.path.join(project_path, "models")
+        if os.path.exists(models_folder):
+            model_files = [f for f in os.listdir(models_folder) if f.endswith("_model.pkl")]
+            if model_files:
+                project_info["algo"] = model_files[0].replace("_model.pkl", "")
+                params_folder = os.path.join(
+                    UPLOAD_FOLDER, f"user_{user_id}", project_name, "params"
+                )
+                filename = project_info["dataset"]
+                algo = project_info["algo"]
+                params_filename = f"{project_name}_{filename}_{algo}_params.pkl"
+                params_path = os.path.join(params_folder, params_filename)
+                params = jb.load(params_path)
+                project_info["params"] = params
+
+    # Récupérer les visualisations
+    if os.path.exists(os.path.join(project_path, "classification_clusters")):
+        clusters_folder = os.path.join(project_path, "classification_clusters")
+        clusters = [
+            f for f in os.listdir(clusters_folder) if f.endswith("_clusters.png")
+        ]
+        if clusters:
+            project_info["clusters"] = f"/backend/static/projects/user_{user_id}/{project_name}/classification_clusters/{clusters[0]}"
+    elif os.path.exists(os.path.join(project_path, "error_curve")):
+        error_curve_folder = os.path.join(project_path, "error_curve")
+        error_curves = [
+            f for f in os.listdir(error_curve_folder) if f.endswith("_error_curve.png")
+        ]
+        if error_curves:
+            project_info["error_curve"] = f"/backend/static/projects/user_{user_id}/{project_name}/error_curve/{error_curves[0]}"
+    elif os.path.exists(os.path.join(project_path, "unsupervised_clusters")):
+        clusters_folder = os.path.join(project_path, "unsupervised_clusters")
+        clusters = [
+            f
+            for f in os.listdir(clusters_folder)
+            if f.endswith("_unsupervised_clusters.png")
+        ]
+        if clusters:
+            project_info["clusters"] = f"/backend/static/projects/user_{user_id}/{project_name}/unsupervised_clusters/{clusters[0]}"
+    elif os.path.exists(os.path.join(project_path, "preprocessing_viz")):
+        viz_folder = os.path.join(project_path, "preprocessing_viz")
+        viz_files = [f for f in os.listdir(viz_folder) if f.endswith(".png")]
+        if viz_files:
+            project_info["preprocessing_viz"] = f"/backend/static/projects/user_{user_id}/{project_name}/preprocessing_viz/{viz_files[0]}"
+    # Déterminer le type de projet
+    
     serialized_project_info = convert_to_serializable(project_info)
     try:
         json.dumps(serialized_project_info)
@@ -1351,11 +1340,8 @@ def train_model():
         "params_path": params_path
     }
     print("before")
-    for i,v in enumerate(model_info_raw):
-        print(i , v)
-        print(type(v))
-    print(type(predictions_values[0][0]))
     model_info = convert_to_serializable(model_info_raw)
+    print(model_info.get('predictions_values'))
     print("after")
     session['model_info'] = model_info
     return jsonify(
@@ -2450,40 +2436,53 @@ def preprocessing_report():
     return send_file(html_path, as_attachment = True, download_name="preprocessing_report.html", mimetype="text/html")
 
 
-@app.route("/predict_page", methods = ['POST','GET'])
+@app.route("/predict_page", methods=["POST", "GET"])
 def predict_page():
-    # Vérifier si l'utilisateur est connecté
     if "user_id" not in session:
         flash("Veuillez vous connecter pour faire une prédiction.", "warning")
-        return jsonify({"success": False, "error": "Veuillez vous connecter."})
+        return jsonify({"success": False, "error": "Veuillez vous connecter."}), 401
+
     data = request.get_json()
     filename = data.get("filename")
     algo = data.get("algo")
     project_name = data.get("project_name")
     model_type = data.get("model_type")
     learning_type = data.get("learning_type")
-    user_id = session.get("user_id", "")
+
+    if not all([filename, algo, project_name, model_type, learning_type]):
+        return (
+            jsonify({
+                "success": False,
+                "error": "Informations manquantes pour la prédiction.",
+            }),
+            400,
+        )
+
+    user_id = session["user_id"]
     params_folder = os.path.join(
         UPLOAD_FOLDER, f"user_{user_id}", project_name, "params"
     )
     params_filename = f"{project_name}_{filename}_{algo}_params.pkl"
     params_path = os.path.join(params_folder, params_filename)
-    params = jb.load(params_path)
+
+    if not os.path.exists(params_path):
+        return jsonify({
+            "success": False,
+            "error": "Fichier de paramètres non trouvé."
+        }), 404
+
+    try:
+        params = jb.load(params_path)
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "error": f"Erreur lors du chargement des paramètres : {str(e)}"
+        }), 500
+
     if learning_type == "supervised":
         features = params.get("X_train_columns", [])
     else:
         features = params.get("X_columns", [])
-
-    if not all([filename, algo, project_name, model_type, learning_type]):
-        return (
-            jsonify(
-                {
-                    "success": False,
-                    "error": "Informations manquantes pour la prédiction.",
-                }
-            ),
-            400,
-        )
 
     model_info = {
         "project_name": project_name,
@@ -2494,7 +2493,8 @@ def predict_page():
         "features": features,
     }
 
-    return jsonify({"success": True, "model_info": model_info })
+    return jsonify({"success": True, "model_info": model_info})
+
 
 
 @app.route("/predict", methods=["POST"])

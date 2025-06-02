@@ -87,27 +87,26 @@ const Dashboard: React.FC = () => {
   const handleDetails = async (projectName: string) => {  
     try {
       const response = await fetch(`http://localhost:5000/project/${encodeURIComponent(projectName)}`, {
-        method: "GET",
-        credentials: "include", // Important pour envoyer le cookie de session
-        headers: {
-          "Content-Type": "application/json"
-        },
+        method: "POST",
+        credentials: "include",
+        // à adapter si nécessaire
       });
   
       const data = await response.json();
-      console.log("data" , data);
+      console.log("data", data);
+  
       if (data.success) {
-        // Option 1 : rafraîchir la liste des projets
         navigate(`/project/${encodeURIComponent(projectName)}`);
-        // Option 2 : ou reload (window.location.reload();)
       } else {
-        alert(`Erreur : ${data.error || "suppression échouée."}`);
+        alert("Impossible d'accéder au projet.");
+        console.error("Erreur backend :", data.message || data);
       }
-    } catch (err) {
-      console.error("Erreur lors de la suppression :", err);
-      alert("Erreur serveur lors de la suppression.");
+    } catch (error) {
+      console.error("Erreur réseau :", error);
+      alert("Erreur de connexion au serveur.");
     }
   };
+  
 
   return (
     <Layout><div>

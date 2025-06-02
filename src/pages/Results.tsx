@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useSearchParams, Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
 import { CustomCard, CustomCardHeader, CustomCardBody } from '../components/ui/custom-card';
 import { CustomButton } from '../components/ui/custom-button';
@@ -7,7 +7,6 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '.
 
 
 const Results: React.FC = () => {
-  const [searchParams] = useSearchParams();
   const [modelInfo, setModelInfo] = useState<any>(null);
   const [error, setError] = useState<string>('');
   const navigate = useNavigate();
@@ -25,15 +24,29 @@ const Results: React.FC = () => {
         const data = await response.json();
         if (data.success && data.model_info) {
           // À faire juste après le fetch
-        const parsedPredictions = data.model_info.predictions_values.map((val: string) => {
-          const cleaned = val.replace(/[()]/g, '');
-          const [a, b] = cleaned.split(',').map(Number);
-          return [a, b];
-        });
-        data.model_info.predictions_values = parsedPredictions;
-
-          localStorage.setItem('modelInfo', JSON.stringify(data.model_info));
           console.log(data.model_info);
+          const parsedPredictions = data.model_info.predictions_values.map((val: any) => {
+            // Si déjà un tableau (ex: [1, 0] ou ['Male', 'Female'])
+            if (Array.isArray(val) && val.length === 2) {
+              return val;
+            }
+          
+            // Si chaîne "(1, 0)" ou "('Male', 'Female')"
+            if (typeof val === 'string' && val.startsWith('(') && val.endsWith(')')) {
+              const cleaned = val.slice(1, -1); // Enlève les parenthèses
+              const parts = cleaned.split(/,(.+)/).map(s =>
+                s.trim().replace(/^['"]|['"]$/g, '') // Enlève les quotes
+              );
+              return parts;
+            }
+          
+            // Fallback si valeur inattendue
+            return [val, null];
+          });
+          data.model_info.predictions_values = parsedPredictions;
+          
+
+          console.log(data.model_info.predictions_values);
           setModelInfo(data.model_info);
         } else {
           setError('No model info returned');
@@ -134,13 +147,13 @@ const Results: React.FC = () => {
             {/* Prediction Button for Supervised Learning */}
             {learning_type !== 'unsupervised' && (
               <div className="flex justify-center">
-                <Link
-                  to={`/predict`}
+                <CustomButton
+                  onClick={() => {navigate("/predict", { state: { modelInfo: modelInfo } });}}
+                  variant="secondary"
                 >
-                  <CustomButton variant="secondary">
                     Faire une prédiction
                   </CustomButton>
-                </Link>
+              
               </div>
             )}
             {/* Action Buttons */}

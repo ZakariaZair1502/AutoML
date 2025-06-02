@@ -859,97 +859,102 @@ const UploadPage: React.FC = () => {
                       )}
                     </div>
                   )}
+                {learningType !== 'preprocessing' && (
+  <>
+    <div className="mt-6 flex items-center space-x-3">
+      <div className="relative inline-block w-10 mr-2 align-middle select-none">
+        <input
+          type="checkbox"
+          id="preprocessing-toggle"
+          name="preprocessing"
+          checked={enablePreprocessing}
+          onChange={handlePreprocessingToggle}
+          className="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer transition-transform duration-200 ease-in-out"
+        />
+        <label
+          htmlFor="preprocessing-toggle"
+          className="toggle-label block overflow-hidden h-6 rounded-full bg-gray-300 cursor-pointer"
+        ></label>
+      </div>
+      <span className="text-gray-light">Enable preprocessing</span>
+    </div>
 
-                  <div className="mt-6 flex items-center space-x-3">
-                    <div className="relative inline-block w-10 mr-2 align-middle select-none">
-                      <input
-                        type="checkbox"
-                        id="preprocessing-toggle"
-                        name="preprocessing"
-                        checked={enablePreprocessing}
-                        onChange={handlePreprocessingToggle}
-                        className="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer transition-transform duration-200 ease-in-out"
-                      />
-                      <label
-                        htmlFor="preprocessing-toggle"
-                        className="toggle-label block overflow-hidden h-6 rounded-full bg-gray-300 cursor-pointer"
-                      ></label>
-                    </div>
-                    <span className="text-gray-light">
-                      Enable preprocessing
-                    </span>
-                  </div>
+    {enablePreprocessing && (
+      <div className="mt-4 p-4 bg-[rgba(255,255,255,0.03)] rounded-md border border-[rgba(255,255,255,0.1)]">
+        <h3 className="text-lg font-medium text-white mb-4">
+          Preprocessing options
+        </h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          {[
+            {
+              id: "normalize",
+              label: "Normalization (Min-Max Scaling)",
+            },
+            {
+              id: "standardize",
+              label: "Standardization (Z-score)",
+            },
+            {
+              id: "missing_values",
+              label: "Missing values handling",
+            },
+            {
+              id: "outliers",
+              label: "Outlier detection and treatment",
+            },
+            {
+              id: "encode_categorical",
+              label: "Categorical variables encoding",
+            },
+            {
+              id: "feature_selection",
+              label: "Feature selection",
+            },
+            {
+              id: "dimensionality_reduction",
+              label: "Dimensionality reduction",
+            },
+            {
+              id: "data_transformation",
+              label: "Data transformation",
+            },
+            {
+              id: "feature_engineering",
+              label: "Feature engineering",
+            },
+            {
+              id: "data_balancing",
+              label: "Data balancing",
+            },
+          ].map((option) => (
+            <div
+              key={option.id}
+              className="flex items-center space-x-3"
+            >
+              <FormCheckbox
+                id={option.id}
+                name={option.id}
+                checked={
+                  preprocessingOptions[
+                    option.id as keyof typeof preprocessingOptions
+                  ]
+                }
+                onChange={handlePreprocessingOptionChange}
+              />
+              <label
+                htmlFor={option.id}
+                className="text-gray-light text-sm"
+              >
+                {option.label}
+              </label>
+            </div>
+          ))}
+        </div>
+      </div>
+    )}
+  </>
+)}
 
-                  {enablePreprocessing && (
-                    <div className="mt-4 p-4 bg-[rgba(255,255,255,0.03)] rounded-md border border-[rgba(255,255,255,0.1)]">
-                      <h3 className="text-lg font-medium text-white mb-4">
-                        Preprocessing options
-                      </h3>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        {[
-                          {
-                            id: "normalize",
-                            label: "Normalization (Min-Max Scaling)",
-                          },
-                          {
-                            id: "standardize",
-                            label: "Standardization (Z-score)",
-                          },
-                          {
-                            id: "missing_values",
-                            label: "Missing values handling",
-                          },
-                          {
-                            id: "outliers",
-                            label: "Outlier detection and treatment",
-                          },
-                          {
-                            id: "encode_categorical",
-                            label: "Categorical variables encoding",
-                          },
-                          {
-                            id: "feature_selection",
-                            label: "Feature selection",
-                          },
-                          {
-                            id: "dimensionality_reduction",
-                            label: "Dimensionality reduction",
-                          },
-                          {
-                            id: "data_transformation",
-                            label: "Data transformation",
-                          },
-                          {
-                            id: "feature_engineering",
-                            label: "Feature engineering",
-                          },
-                          { id: "data_balancing", label: "Data balancing" },
-                        ].map((option) => (
-                          <div
-                            key={option.id}
-                            className="flex items-center space-x-3"
-                          >
-                            <FormCheckbox
-                              id={option.id}
-                              name={option.id}
-                              checked={
-                                preprocessingOptions[
-                                  option.id as keyof typeof preprocessingOptions
-                                ]
-                              }
-                              onChange={handlePreprocessingOptionChange}
-                            />
-                            <label
-                              htmlFor={option.id}
-                              className="text-gray-light text-sm"
-                            >
-                              {option.label}
-                            </label>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
 
                   <div className="mt-8">
                     <CustomButton
