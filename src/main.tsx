@@ -8,6 +8,7 @@ import Evaluation from '@/pages/Evaluation'
 import Dashboard from '@/pages/Dashboard'
 import Login from '@/pages/Login'
 import Register from '@/pages/Register'
+import Logout from '@/pages/Logout';
 import Results from '@/pages/Results'
 import Home from '@/pages/Home'
 import UploadPage from '@/pages/Upload'
@@ -30,6 +31,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
 <Routes>
   <Route path="/" element={<Login />} />
   <Route path="/register" element={<Register />} />
+  <Route path="/logout" element={<Logout />} />
 
   {/* Routes protégées */}
   <Route

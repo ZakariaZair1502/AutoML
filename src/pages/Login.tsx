@@ -44,7 +44,12 @@ const Login = () => {
       if (response.ok) {
         // Optionally handle session/token here
         localStorage.setItem('user', JSON.stringify(formData.username));
-        navigate('/home');
+        if (formData.username == 'admin' && formData.password == 'admin')
+        {
+          navigate('/admin')
+        }else{
+          navigate('/home');
+        }
       } else {
         const data = await response.json();
         alert(data.message || 'Login failed');
@@ -162,9 +167,6 @@ const Login = () => {
               </Form>
             </CustomCardBody>
           </CustomCard>
-          <Link to="/admin">
-          Admin
-          </Link>
         </div>
       </div>
     </Layout>

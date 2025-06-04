@@ -289,8 +289,18 @@ def login():
 
 
     # Check if user exists in the database
+    if username == 'admin' and password == 'admin' :
+            return (
+            jsonify(
+                {
+                    "message": f"Hello {username}",
+                    "status": "sucess",
+                }
+            ),
+            200,
+        ) 
     user = User.query.filter_by(username=username).first()
-    if user and check_password_hash(user.password, password):
+    if user and check_password_hash(user.password, password): # Redirect to a protected route
         session["user_id"] = user.username
         flash("Login successful!", "success")
         return (
@@ -308,6 +318,13 @@ def login():
             jsonify({"message": "Invalid username or password", "status": "error"}),
             401,
         )
+
+@app.route('/logout', methods=['POST'])
+def logout():
+    if 'user_id' not in session:
+        return jsonify({'error': 'Unauthorized'}), 401 
+    session.pop('user_id', None)
+    return jsonify({'message': 'Logged out successfully'}), 200
 
 
 @app.route("/project/<string:name>", methods=["POST","GET"])

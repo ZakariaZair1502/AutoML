@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Menu, X, Home, BarChart3, Settings, User, LayoutDashboardIcon } from 'lucide-react';
+import { Menu, X, Home, BarChart3, Settings, User, LayoutDashboardIcon, LogOut } from 'lucide-react';
 
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -23,7 +23,7 @@ const Navbar = () => {
     { name: 'Unsupervised', path: '/unsupervised', icon: Settings },
     { name: 'Preprocessing', path: '/preprocessing', icon: User },
     { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboardIcon },
-    
+    { name: 'Logout', path: '/logout', icon: LogOut },
   ];
 
   return (
