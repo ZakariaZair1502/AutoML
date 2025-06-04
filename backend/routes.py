@@ -110,7 +110,52 @@ algorithm_parameters_cache = {}
 with app.app_context():
     db.create_all()
 
+@app.route("/admin/users", methods=["GET"])
+def get_all_users():
+    users = User.query.all()
+    result = [
+        {
+            "id": user.id,
+            "fullname": user.fullname,
+            "username": user.username,
+            "password" : user.password,
+        }
+        for user in users
+    ]
+    return jsonify({"users": result}), 200
 
+@app.route("/admin/users/<int:user_id>", methods=["PUT"])
+def update_user(user_id):
+    data = request.get_json()
+    user = User.query.get(user_id)
+
+    if not user:
+        return jsonify({"message": "User not found", "status": "error"}), 404
+    print(data)
+    user.fullname = data.get("fullname", user.fullname)
+    user.username = data.get("username", user.username)
+
+    if "password" in data and data["password"]:
+        user.password = generate_password_hash(data["password"], method="pbkdf2:sha256")
+
+    db.session.commit()
+
+    return jsonify({"message": "User updated successfully", "status": "success"}), 200
+
+
+# Route: Supprimer un utilisateur par ID
+@app.route("/admin/users/<int:user_id>", methods=["DELETE"])
+def delete_user(user_id):
+    user = User.query.get(user_id)
+
+    if not user:
+        return jsonify({"message": "User not found", "status": "error"}), 404
+
+    db.session.delete(user)
+    db.session.commit()
+
+    return jsonify({"message": "User deleted successfully", "status": "success"}), 200
+    
 def allowed_file(filename):
     return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
 

@@ -18,11 +18,12 @@ const Navbar = () => {
   }, []);
 
   const navItems = [
-    { name: 'Accueil', path: '/', icon: Home },
+    { name: 'Accueil', path: '/home', icon: Home },
     { name: 'Supervised', path: '/supervised', icon: BarChart3 },
     { name: 'Unsupervised', path: '/unsupervised', icon: Settings },
     { name: 'Preprocessing', path: '/preprocessing', icon: User },
     { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboardIcon },
+    
   ];
 
   return (

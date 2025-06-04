@@ -1,7 +1,8 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
-
+import ProtectedRoute from "@/components/ProtectedRoute";
+import Admin from '@/pages/Admin'
 import SelectType from '@/pages/SelectType'
 import Evaluation from '@/pages/Evaluation'
 import Dashboard from '@/pages/Dashboard'
@@ -25,26 +26,143 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
     v7_startTransition: true,v7_relativeSplatPath: true,
   }}
 >
-      <Routes>
-        <Route path="/" element={<Login />} />
-        <Route path="/upload" element={<UploadPage />} />
-        <Route path="/supervised" element={<UploadPage />} />
-        <Route path="/unsupervised" element={<UploadPage />} />
-        <Route path="/preprocessing" element={<UploadPage />} />
-        <Route path="/dashboard" element={<Dashboard />} />
-        <Route path="/select_type" element={<SelectType/>} />
-        <Route path="/evaluate" element={<Evaluation/>} />
-        <Route path="/results" element={<Results />} />
-        <Route path="/home" element={<Home />} />
-        <Route path="/register" element={<Register />} />
-        <Route path="/predict" element={<Prediction />} />
-        <Route path="/select_features" element={<FeatureSelection />} />
-        <Route path="/plot_results" element={<Plot_results />} />
-        <Route path="/project/:name" element={<ProjectDetails />} />
-        <Route path="/preprocessing/methods" element={<Preprocessing />} />
-        <Route path="/preprocessing/apply" element={<PreprocessingResults />} />
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
+
+<Routes>
+  <Route path="/" element={<Login />} />
+  <Route path="/register" element={<Register />} />
+
+  {/* Routes protégées */}
+  <Route
+    path="/admin"
+    element={
+      <ProtectedRoute>
+        <Admin />
+      </ProtectedRoute>
+    }
+  />
+  <Route
+    path="/upload"
+    element={
+      <ProtectedRoute>
+        <UploadPage />
+      </ProtectedRoute>
+    }
+  />
+  <Route
+    path="/supervised"
+    element={
+      <ProtectedRoute>
+        <UploadPage />
+      </ProtectedRoute>
+    }
+  />
+  <Route
+    path="/unsupervised"
+    element={
+      <ProtectedRoute>
+        <UploadPage />
+      </ProtectedRoute>
+    }
+  />
+  <Route
+    path="/preprocessing"
+    element={
+      <ProtectedRoute>
+        <UploadPage />
+      </ProtectedRoute>
+    }
+  />
+  <Route
+    path="/dashboard"
+    element={
+      <ProtectedRoute>
+        <Dashboard />
+      </ProtectedRoute>
+    }
+  />
+  <Route
+    path="/select_type"
+    element={
+      <ProtectedRoute>
+        <SelectType />
+      </ProtectedRoute>
+    }
+  />
+  <Route
+    path="/evaluate"
+    element={
+      <ProtectedRoute>
+        <Evaluation />
+      </ProtectedRoute>
+    }
+  />
+  <Route
+    path="/results"
+    element={
+      <ProtectedRoute>
+        <Results />
+      </ProtectedRoute>
+    }
+  />
+  <Route
+    path="/home"
+    element={
+      <ProtectedRoute>
+        <Home />
+      </ProtectedRoute>
+    }
+  />
+  <Route
+    path="/predict"
+    element={
+      <ProtectedRoute>
+        <Prediction />
+      </ProtectedRoute>
+    }
+  />
+  <Route
+    path="/select_features"
+    element={
+      <ProtectedRoute>
+        <FeatureSelection />
+      </ProtectedRoute>
+    }
+  />
+  <Route
+    path="/plot_results"
+    element={
+      <ProtectedRoute>
+        <Plot_results />
+      </ProtectedRoute>
+    }
+  />
+  <Route
+    path="/project/:name"
+    element={
+      <ProtectedRoute>
+        <ProjectDetails />
+      </ProtectedRoute>
+    }
+  />
+  <Route
+    path="/preprocessing/methods"
+    element={
+      <ProtectedRoute>
+        <Preprocessing />
+      </ProtectedRoute>
+    }
+  />
+  <Route
+    path="/preprocessing/apply"
+    element={
+      <ProtectedRoute>
+        <PreprocessingResults />
+      </ProtectedRoute>
+    }
+  />
+  <Route path="*" element={<Navigate to="/" replace />} />
+</Routes>
+
     </BrowserRouter>
   </React.StrictMode>,
 )
