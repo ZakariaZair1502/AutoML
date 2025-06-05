@@ -413,6 +413,7 @@ def project_details(name):
     # Déterminer le type de projet
     
     serialized_project_info = convert_to_serializable(project_info)
+
     try:
         json.dumps(serialized_project_info)
     except TypeError as e:
@@ -422,7 +423,7 @@ def project_details(name):
     return jsonify(
         {
             "success": True,
-            "project_info": project_info,
+            "project_info": serialized_project_info,
         }
     )
 

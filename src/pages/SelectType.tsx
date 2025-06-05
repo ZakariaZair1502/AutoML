@@ -61,6 +61,15 @@ const CLASSIFICATION_MODEL_CONFIGS:any = {
     parameters: {
       penalty: { type: "select", options: ["l2", "none", "l1", "elasticnet"], default: "l2" },
       C: { type: "float", default: 1.0 },
+      dual: { type: "bool", default: false },
+      tol: { type: "float", default: 1e-4 },
+      fit_intercept: { type: "bool", default: true },
+      intercept_scaling: { type: "float", default: 1 },
+      class_weight: { type: "str", default: "balanced", optional: true },
+      verbose: { type: "int", default: 0 },
+      warm_start: { type: "bool", default: false },
+      n_jobs: {type : "int", default:null},
+      l1_ratio: { type: "float", default: 0, optional: true },
       solver: {
         type: "select",
         options: ["lbfgs", "liblinear", "sag", "saga", "newton-cg"],
@@ -75,9 +84,18 @@ const CLASSIFICATION_MODEL_CONFIGS:any = {
     module: "sklearn.svm",
     class: "SVC",
     parameters: {
-      kernel: { type: "select", options: ["linear", "poly", "rbf", "sigmoid"], default: "rbf" },
+      kernel: { type: "select", options: ["linear", "poly", "rbf", "sigmoid","precomputed"], default: "rbf" },
       C: { type: "float", default: 1.0 },
-      gamma: { type: "str", default: "scale" },
+      gamma: { type: "select", options: ["scale","auto"], default: "scale" },
+      degree: { type: "int", default: 3, optional: true },
+      coef0: { type: "float", default: 0.0 },
+      shrinking: { type: "bool", default: true },
+      tol: { type: "float", default: 1e-3 },
+      cache_size: { type: "int", default: 200 },
+      max_iter: { type: "int", default: -1 },
+      decision_function_shape: { type: "select", options: ["ovr", "ovo"], default: "ovr" },
+      break_ties: { type: "bool", default: false },
+      class_weight: { type: "str", default: "balanced", optional: true },
       probability: { type: "bool", default: false },
       random_state: { type: "int", default: null, optional: true }
     }
@@ -90,6 +108,13 @@ const CLASSIFICATION_MODEL_CONFIGS:any = {
       criterion: { type: "select", options: ["gini", "entropy", "log_loss"], default: "gini" },
       splitter: { type: "select", options: ["best", "random"], default: "best" },
       max_depth: { type: "int", default: null, optional: true },
+      min_samples_split: { type: "int", default: 2 },
+      min_samples_leaf: { type: "int", default: 1 },
+      min_weight_fraction_leaf: { type: "float", default: 0.0, optional: true },
+      max_features: { type: "select", options: [ "sqrt", "log2"], default: "sqrt" },
+      max_leaf_nodes: { type: "int", default:null},
+      min_impurity_decrease: { type: "int", default: null},
+      ccp_alpha:{ type: "float", default : 0.0},
       random_state: { type: "int", default: null, optional: true }
     }
   },
@@ -101,8 +126,13 @@ const CLASSIFICATION_MODEL_CONFIGS:any = {
       n_estimators: { type: "int", default: 100 },
       criterion: { type: "select", options: ["gini", "entropy", "log_loss"], default: "gini" },
       max_depth: { type: "int", default: null, optional: true },
-      random_state: { type: "int", default: null, optional: true }
-    }
+      random_state: { type: "int", default: null, optional: true },
+      max_features: { type: "select", options: ["sqrt", "log2"], default: "sqrt" },
+      max_leaf_nodes: { type: "int", default: null},
+      min_impurity_decrease: { type: "int", default: null},
+      ccp_alpha:{ type: "float", default : 0.0},
+      max_samples: { type: "float", default: null, optional: true },
+      bootstrap: { type: "bool", default: true },    }
   },
 
   "Gradient Boosting Classifier": {
@@ -113,7 +143,11 @@ const CLASSIFICATION_MODEL_CONFIGS:any = {
       learning_rate: { type: "float", default: 0.1 },
       loss: { type: "select", options: ["log_loss", "exponential"], default: "log_loss" },
       max_depth: { type: "int", default: 3 },
-      random_state: { type: "int", default: null, optional: true }
+      random_state: { type: "int", default: null, optional: true },
+      max_features: { type: "select", options: ["sqrt", "log2"], default: "sqrt" },
+      max_leaf_nodes: { type: "int", default: null},
+      min_impurity_decrease: { type: "int", default: null},
+      ccp_alpha:{ type: "float", default : 0.0},
     }
   },
 
@@ -123,7 +157,12 @@ const CLASSIFICATION_MODEL_CONFIGS:any = {
     parameters: {
       n_neighbors: { type: "int", default: 5 },
       weights: { type: "select", options: ["uniform", "distance"], default: "uniform" },
-      algorithm: { type: "select", options: ["auto", "ball_tree", "kd_tree", "brute"], default: "auto" }
+      algorithm: { type: "select", options: ["auto", "ball_tree", "kd_tree", "brute"], default: "auto" },
+      leaf_size: { type: "int", default: 30 },
+      p: { type: "int", default: 2 },
+      metric: { type: "select", options: ["euclidean", "manhattan", "chebyshev", "minkowski"], default: "minkowski" },
+      metric_params: { type: "str", default: null, optional: true },
+      n_jobs: { type: "int", default: null, optional: true }
     }
   },
 
@@ -131,7 +170,8 @@ const CLASSIFICATION_MODEL_CONFIGS:any = {
     module: "sklearn.discriminant_analysis",
     class: "QuadraticDiscriminantAnalysis",
     parameters: {
-      reg_param: { type: "float", default: 0.0 }
+      reg_param: { type: "float", default: 0.0 },
+      store_covariance: { type: "bool", default: false}
     }
   },
 
@@ -140,8 +180,11 @@ const CLASSIFICATION_MODEL_CONFIGS:any = {
     class: "LinearDiscriminantAnalysis",
     parameters: {
       solver: { type: "select", options: ["svd", "lsqr", "eigen"], default: "svd" },
-      shrinkage: { type: "select", options: ["auto", "none", "manual"], default: "none", optional: true }
-    }
+      shrinkage: { type: "select", options: ["auto", "none", "manual"], default: "none", optional: true },
+      n_components: { type: "int", default: null, optional: true },
+      store_covariance: { type: "bool", default: false },
+      tol: { type: "float", default: 1e-4 },   
+    } 
   },
 
   "AdaBoost Classifier": {
@@ -150,7 +193,6 @@ const CLASSIFICATION_MODEL_CONFIGS:any = {
     parameters: {
       n_estimators: { type: "int", default: 50 },
       learning_rate: { type: "float", default: 1.0 },
-      algorithm: { type: "select", options: ["SAMME", "SAMME.R"], default: "SAMME.R" },
       random_state: { type: "int", default: null, optional: true }
     }
   },
@@ -160,6 +202,8 @@ const CLASSIFICATION_MODEL_CONFIGS:any = {
     class: "BaggingClassifier",
     parameters: {
       n_estimators: { type: "int", default: 10 },
+      bootstrap_features: { type: "bool", default: false },
+      oob_score: { type: "bool", default: false},
       max_samples: { type: "float", default: 1.0 },
       max_features: { type: "float", default: 1.0 },
       bootstrap: { type: "bool", default: true },
@@ -183,8 +227,16 @@ const CLASSIFICATION_MODEL_CONFIGS:any = {
       activation: { type: "select", options: ["identity", "logistic", "tanh", "relu"], default: "relu" },
       solver: { type: "select", options: ["lbfgs", "sgd", "adam"], default: "adam" },
       alpha: { type: "float", default: 0.0001 },
+      batch_size: { type: "int", default: 200},
       learning_rate: { type: "select", options: ["constant", "invscaling", "adaptive"], default: "constant" },
+      learning_rate_init: { type: "int", default: 0.001},
       max_iter: { type: "int", default: 200 },
+      early_stopping: { type: "bool", default: false},
+      validation_fraction: { type: "float", default: 0.1},
+      beta_1: { type: "float", default: 0.9},
+      epsilon: { type: "float", default: 1e-08},
+      n_iter_no_change: { type:"int", default: 10},
+      beta_2: { type: "float", default: 0.999},
       random_state: { type: "int", default: null, optional: true }
     }
   }
@@ -200,6 +252,9 @@ const CLUSTERING_MODEL_CONFIGS:any = {
       n_init: { type: "int", default: "auto", optional: true },
       max_iter: { type: "int", default: 300, min: 1 },
       tol: { type: "float", default: 1e-4, step: 1e-4 },
+      verbose: { type: "int", default: 0},
+      copy_x: { type: "bool", default: true},
+      algorithm: { type: "select", options:["lloyd","elkan"], default: "lloyd"},
       random_state: { type: "int", default: null, optional: true },
     }
   },
@@ -210,7 +265,11 @@ const CLUSTERING_MODEL_CONFIGS:any = {
     parameters: {
       eps: { type: "float", default: 0.5, min: 0 },
       min_samples: { type: "int", default: 5, min: 1 },
-      metric: { type: "str", default: "euclidean" },
+      metric: { type: "select", options: ["minkowski","euclidean"],default: "minkowski" },
+      algorithm: { type: "select", options: ["auto", "ball_tree", "kd_tree", "brute"], default: "auto"},
+      leaf_size: { type: "int", default: 30, min: 1 },
+      p: { type: "int", default: 2, min: 1 },
+      n_jobs: { type: "int", default: null, optional: true }
     }
   },
 
@@ -219,9 +278,16 @@ const CLUSTERING_MODEL_CONFIGS:any = {
     class: "OPTICS",
     parameters: {
       min_samples: { type: "int", default: 5 },
+      max_eps: { type: "float", default: null, optional: true },
+      algorithm: { type: "select", options: ["auto", "ball_tree", "kd_tree", "brute"], default: "auto" },
+      leaf_size: { type: "int", default: 30 },
       xi: { type: "float", default: 0.05, min: 0 },
       min_cluster_size: { type: "int", default: 2 },
-      metric: { type: "str", default: "minkowski" }
+      metric: { type: "str", default: "minkowski" },
+      p: { type: "int", default: 2 },
+      cluster_method: { type: "select", options: ["xi", "dbscan"], default: "xi" },
+      n_jobs: { type: "int", default: null, optional: true },
+      random_state: { type: "int", default: null, optional: true },
     }
   },
 
@@ -231,8 +297,14 @@ const CLUSTERING_MODEL_CONFIGS:any = {
     parameters: {
       min_cluster_size: { type: "int", default: 5 },
       min_samples: { type: "int", default: null, optional: true },
+      max_cluster_size: { type: "int", default: null, optional: true },
       metric: { type: "str", default: "euclidean" },
-      cluster_selection_method: { type: "select", options: ["eom", "leaf"], default: "eom" }
+      alpha: { type: "float", default: 1.0, min: 0 },
+      algorithm: {},
+      leaf_size: { type: "int", default: 40 },
+      cluster_selection_method: { type: "select", options: ["eom", "leaf"], default: "eom" },
+      allow_single_cluster: { type: "bool", default: false },
+      store_centers: { type: "select", options: ["centroid","medoid","both"], default: null}
     }
   },
 
@@ -241,7 +313,10 @@ const CLUSTERING_MODEL_CONFIGS:any = {
     class: "AgglomerativeClustering",
     parameters: {
       n_clusters: { type: "int", default: 2 },
-      affinity: { type: "select", options: ["euclidean", "l1", "l2", "manhattan", "cosine"], default: "euclidean" },
+      metric: { type: "select", options: ["euclidean", "l1", "l2", "manhattan", "cosine"], default: "euclidean" },
+      compute_full_tree: { type:"bool", default: true },
+      distance_threshold: { type: "float", default: null },
+      compute_distances: { type:"bool", default: false },
       linkage: { type: "select", options: ["ward", "complete", "average", "single"], default: "ward" }
     }
   },
@@ -251,7 +326,10 @@ const CLUSTERING_MODEL_CONFIGS:any = {
     class: "Birch",
     parameters: {
       threshold: { type: "float", default: 0.5 },
-      n_clusters: { type: "int", default: 3 }
+      n_clusters: { type: "int", default: 3 },
+      branching_factor: { type: "int", default: 50},
+      compute_labels: { type: "bool", default: true },
+      copy: { type: "bool", default: true }
     }
   },
 
@@ -263,7 +341,12 @@ const CLUSTERING_MODEL_CONFIGS:any = {
       covariance_type: { type: "select", options: ["full", "tied", "diag", "spherical"], default: "full" },
       tol: { type: "float", default: 1e-3 },
       max_iter: { type: "int", default: 100 },
-      random_state: { type: "int", default: null, optional: true }
+      n_init: { type: "int", default: 1 },
+      init_params: { type: "select", options:["kmeans","k-means++","random","random_from_data"], default: "kmeans", optional: true },
+      random_state: { type: "int", default: null, optional: true },
+      warm_start: { type: "bool", default: true },
+      verbose: { type: "int", default: 0 },
+      verbose_interval : { type: "int", default: 10 },
     }
   },
 
@@ -276,7 +359,7 @@ const CLUSTERING_MODEL_CONFIGS:any = {
       assign_labels: { type: "select", options: ["kmeans", "discretize", "cluster_qr"], default: "kmeans" },
       random_state: { type: "int", default: null, optional: true }
     }
-  }
+  },
 };
 const REGRESSION_MODEL_CONFIGS:any = {
   "Linear Regression": {
@@ -284,7 +367,9 @@ const REGRESSION_MODEL_CONFIGS:any = {
     class: "LinearRegression",
     parameters: {
       fit_intercept: { type: "bool", default: true },
-      positive: { type: "bool", default: false }
+      positive: { type: "bool", default: false },
+      copy_x: { type: "bool", default: false },
+      n_jobs: { type: "int", default: null },
     }
   },
 
@@ -294,7 +379,15 @@ const REGRESSION_MODEL_CONFIGS:any = {
     parameters: {
       kernel: { type: "select", options: ["linear", "poly", "rbf", "sigmoid", "precomputed"], default: "rbf" },
       C: { type: "float", default: 1.0, min: 0 },
-      epsilon: { type: "float", default: 0.1 }
+      gamma: { type: "select", options: ["scale","auto"], default: "scale" },
+      epsilon: { type: "float", default: 0.1 },
+      tol: { type: "float", default: 0.001 },
+      max_iter: { type: "int", default: -1 },
+      shrinking: { type: "bool", default: true },
+      cache_size: { type: "float", default: 200 },
+      verbose: { type: "bool", default: false },
+      degree: { type: "int", default: 3 },
+      coef0: { type: "float", default: 0.0 },
     }
   },
 
@@ -305,6 +398,13 @@ const REGRESSION_MODEL_CONFIGS:any = {
       criterion: { type: "select", options: ["squared_error", "friedman_mse", "absolute_error", "poisson"], default: "squared_error" },
       splitter: { type: "select", options: ["best", "random"], default: "best" },
       max_depth: { type: "int", default: null, optional: true },
+      min_samples_split: { type: "int", default: 2 },
+      min_samples_leaf: { type: "int", default: 1 },
+      min_weight_fraction_leaf: { type: "float", default: 0.0 },
+      max_features: { type: "select", options: ["auto", "sqrt", "log2"], default: "auto" },
+      max_leaf_nodes: { type: "int", default: null, optional: true },
+      min_impurity_decrease: { type: "float", default: 0.0 },
+      ccp_alpha: { type: "float", default: 0.0 },
       random_state: { type: "int", default: null, optional: true }
     }
   },
@@ -314,12 +414,12 @@ const REGRESSION_MODEL_CONFIGS:any = {
     class: "Ridge",
     parameters: {
       alpha: { type: "float", default: 1.0 },
-      solver: {
-        type: "select",
-        options: ["auto", "svd", "cholesky", "lsqr", "sparse_cg", "sag", "saga", "lbfgs"],
-        default: "auto"
-      },
+      solver: { type: "select", options: ["auto", "svd", "cholesky", "lsqr", "sparse_cg", "sag", "saga", "lbfgs"], default: "auto"},
       fit_intercept: { type: "bool", default: true },
+      max_iter: { type: "int", default: null, optional: true },
+      tol: { type: "float", default: 1e-3 },
+      copy_x: { type: "bool", default: true },
+      positive: { type: "bool", default: false },
       random_state: { type: "int", default: null, optional: true }
     }
   },
@@ -330,6 +430,10 @@ const REGRESSION_MODEL_CONFIGS:any = {
     parameters: {
       alpha: { type: "float", default: 1.0 },
       fit_intercept: { type: "bool", default: true },
+      precompute: { type: "bool", default: false },
+      copy_x: { type: "bool", default: true },
+      warm_start: { type: "bool", default: false },
+      positive: { type: "bool", default: false },
       max_iter: { type: "int", default: 1000 },
       tol: { type: "float", default: 1e-4 },
       selection: { type: "select", options: ["cyclic", "random"], default: "cyclic" },
@@ -344,12 +448,16 @@ const REGRESSION_MODEL_CONFIGS:any = {
       alpha: { type: "float", default: 1.0 },
       l1_ratio: { type: "float", default: 0.5 },
       fit_intercept: { type: "bool", default: true },
+      precompute: { type: "bool", default: false },
+      copy_x: { type: "bool", default: true },
+      warm_start: { type: "bool", default: false },
+      positive: { type: "bool", default: false },
+      selection: { type: "select", options: ["cyclic", "random"], default: "cyclic" },
       max_iter: { type: "int", default: 1000 },
       tol: { type: "float", default: 1e-4 },
       random_state: { type: "int", default: null, optional: true }
     }
   },
-
   "Random Forest Regressor": {
     module: "sklearn.ensemble",
     class: "RandomForestRegressor",
@@ -357,6 +465,16 @@ const REGRESSION_MODEL_CONFIGS:any = {
       n_estimators: { type: "int", default: 100 },
       criterion: { type: "select", options: ["squared_error", "absolute_error", "friedman_mse", "poisson"], default: "squared_error" },
       max_depth: { type: "int", default: null, optional: true },
+      min_samples_split: { type: "int", default: 2 },
+      min_samples_leaf: { type: "int", default: 1 },
+      min_weight_fraction_leaf: { type: "float", default: 0.0 },
+      max_features: { type: "select", options: ["auto", "sqrt", "log2"], default: "auto" },
+      max_leaf_nodes: { type: "int", default: null, optional: true },
+      min_impurity_decrease: { type: "float", default: 0.0 },
+      bootstrap: { type: "bool", default: true },
+      oob_score: { type: "bool", default: false },
+      n_jobs: { type: "int", default: null },
+      warm_start: { type: "bool", default: false },
       random_state: { type: "int", default: null, optional: true }
     }
   },
@@ -369,6 +487,13 @@ const REGRESSION_MODEL_CONFIGS:any = {
       learning_rate: { type: "float", default: 0.1 },
       loss: { type: "select", options: ["squared_error", "absolute_error", "huber", "quantile"], default: "squared_error" },
       max_depth: { type: "int", default: 3 },
+      min_samples_split: { type: "int", default: 2 },
+      min_samples_leaf: { type: "int", default: 1 },
+      min_weight_fraction_leaf: { type: "float", default: 0.0 },
+      max_features: { type: "select", options: ["auto", "sqrt", "log2"], default: "auto" },
+      max_leaf_nodes: { type: "int", default: null, optional: true },
+      subsample: { type: "float", default: 1.0 },
+      ccp_alpha: { type: "float", default: 0.0 },
       random_state: { type: "int", default: null, optional: true }
     }
   },
@@ -392,6 +517,10 @@ const REGRESSION_MODEL_CONFIGS:any = {
       max_samples: { type: "float", default: 1.0 },
       max_features: { type: "float", default: 1.0 },
       bootstrap: { type: "bool", default: true },
+      bootstrap_features: { type: "bool", default: false },
+      oob_score: { type: "bool", default: false },
+      warm_start: { type: "bool", default: false },
+      n_jobs: { type: "int", default: null },
       random_state: { type: "int", default: null, optional: true }
     }
   },
@@ -402,6 +531,11 @@ const REGRESSION_MODEL_CONFIGS:any = {
     parameters: {
       n_estimators: { type: "int", default: 100 },
       max_depth: { type: "int", default: 5 },
+      min_samples_split: { type: "int", default: 2 },
+      min_samples_leaf: { type: "int", default: 1 },
+      min_weight_fraction_leaf: { type: "float", default: 0.0 },
+      max_leaf_nodes: { type: "int", default: null, optional: true },
+      min_impurity_decrease: { type: "float", default: 0.0 },
       sparse_output: { type: "bool", default: true },
       random_state: { type: "int", default: null, optional: true }
     }
@@ -415,8 +549,16 @@ const REGRESSION_MODEL_CONFIGS:any = {
       activation: { type: "select", options: ["identity", "logistic", "tanh", "relu"], default: "relu" },
       solver: { type: "select", options: ["lbfgs", "sgd", "adam"], default: "adam" },
       alpha: { type: "float", default: 0.0001 },
+      batch_size: { type: "int", default: 200},
       learning_rate: { type: "select", options: ["constant", "invscaling", "adaptive"], default: "constant" },
+      learning_rate_init: { type: "int", default: 0.001},
       max_iter: { type: "int", default: 200 },
+      early_stopping: { type: "bool", default: false},
+      validation_fraction: { type: "float", default: 0.1},
+      beta_1: { type: "float", default: 0.9},
+      epsilon: { type: "float", default: 1e-08},
+      n_iter_no_change: { type:"int", default: 10},
+      beta_2: { type: "float", default: 0.999},
       random_state: { type: "int", default: null, optional: true }
     }
   }
@@ -457,11 +599,11 @@ const AlgorithmSelection: React.FC = () => {
   const modelTypes = [
     { value: "classification", label: "Classification" },
     { value: "regression", label: "Regression" },
-    { value: "partition", label: "Partition (K-Means)" },
-    { value: "density", label: "Density (DBSCAN, OPTICS, HDBSCAN)" },
-    { value: "hierarchical", label: "Hierarchical (Agglomerative, BIRCH)" },
-    { value: "model", label: "Model (GMM)" },
-    { value: "spectral", label: "Spectral (Spectral Clustering)" },
+    { value: "partition", label: "Partition Based" },
+    { value: "density", label: "Density Based" },
+    { value: "hierarchical", label: "Hierarchical Clustering" },
+    { value: "model", label: "Model Based" },
+    { value: "spectral", label: "Spectral Clustering" },
   ];
 
   // Filter modelTypes based on learning_type
