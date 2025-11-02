@@ -4,8 +4,9 @@
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![React](https://img.shields.io/badge/React-19.1.0-61DAFB?logo=react)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.0.0+-3178C6?logo=typescript)
-![MongoDB](https://img.shields.io/badge/TypeScript-5.0.0+-3178C6?logo=mongodb)
-![Flask](https://img.shields.io/badge/Flask?logo=Flask)
+![MongoDB](https://img.shields.io/badge/MongoDB-4EA94B?style=for-the-badge&logo=mongodb&logoColor=white)
+![Flask](https://img.shields.io/badge/Flask-000000?style=for-the-badge&logo=flask&logoColor=white)
+![scikit-learn](https://img.shields.io/badge/scikit--learn-F7931E?style=for-the-badge&logo=scikit-learn&logoColor=white)
 
 AutoML is an intuitive platform for machine learning workflows that simplifies data preprocessing, model training, and evaluation through a user-friendly interface.
 
