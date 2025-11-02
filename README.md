@@ -1,11 +1,11 @@
-# AutoModler
+# AutoML
 
-![AutoModler Logo](https://img.shields.io/badge/AutoModler-ML%20Platform-blue)
+![AutoML Logo](https://img.shields.io/badge/AutoModler-ML%20Platform-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![React](https://img.shields.io/badge/React-19.1.0-61DAFB?logo=react)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.0.0+-3178C6?logo=typescript)
 
-AutoModler is an intuitive platform for machine learning workflows that simplifies data preprocessing, model training, and evaluation through a user-friendly interface.
+AutoML is an intuitive platform for machine learning workflows that simplifies data preprocessing, model training, and evaluation through a user-friendly interface.
 
 ## 🚀 Features
 
@@ -42,8 +42,8 @@ AutoModler is an intuitive platform for machine learning workflows that simplifi
 ### Frontend Setup
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/automodler.git
-cd automodler
+git clone https://github.com/ZakariaZair1502/AutoML.git
+cd AutoML
 
 # Install dependencies
 npm install
@@ -71,7 +71,7 @@ python run.py
 ## 📊 Project Structure
 
 ```
-automodler/
+AutoML/
 ├── backend/                # Python Flask backend
 │   ├── routes.py           # API endpoints
 │   ├── supervised_models.py # Supervised learning models
@@ -107,12 +107,12 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 
 ## 📄 License
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+This project is licensed under the  GNU GPLv3 License - see the LICENSE file for details.
 
 ## 📞 Contact
 
-For any questions or feedback, please reach out to [your-email@example.com](mailto:your-email@example.com).
+For any questions or feedback, please reach out to [zakaria.zair.48@edu.uiz.ac.ma](mailto:zakaria.zair.48@edu.uiz.ac.ma).
 
 ---
 
-Made with ❤️ by Your Team Name
+Made with ❤️ by Zakaria ZAIR
