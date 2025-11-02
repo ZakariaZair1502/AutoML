@@ -79,20 +79,20 @@ def convert_algorithm_parameters(algorithm_parameters):
 
     return processed_parameters
 
-def preprocess_data(X, y=None, preprocessing_enabled=False, preprocessing_options=None):
+def preprocess_data(X, y=None, enable_preprocessing=False, preprocessing_options=None):
     """Prétraite les données selon les options sélectionnées.
     
     Args:
         X: Les features à prétraiter
         y: La variable cible (optionnelle)
-        preprocessing_enabled: Booléen indiquant si le prétraitement est activé
+        enable_preprocessing: Booléen indiquant si le prétraitement est activé
         preprocessing_options: Liste des options de prétraitement sélectionnées
         
     Returns:
         X_processed: Les features prétraitées
         y_processed: La variable cible prétraitée (si fournie)
     """
-    if not preprocessing_enabled or not preprocessing_options:
+    if not enable_preprocessing or not preprocessing_options:
         return X, y
     
     X_processed = X.copy()
@@ -187,7 +187,7 @@ def preprocess_data(X, y=None, preprocessing_enabled=False, preprocessing_option
     
     return X_processed, y_processed
 
-def model_train(file, model_name, selected_features=None, target_feature=None, algorithm_parameters=None, preprocessing_enabled=False, preprocessing_options=None):
+def model_train(file, model_name, selected_features=None, target_feature=None, algorithm_parameters=None, enable_preprocessing=False, preprocessing_options=None):
     if model_name not in ALGORITHMS:
         raise ValueError(f"Modèle {model_name} non valide")
     if not target_feature:
@@ -230,7 +230,7 @@ def model_train(file, model_name, selected_features=None, target_feature=None, a
     y = data[target_feature]
     
     # Appliquer le prétraitement des données si activé
-    X_processed, y_processed = preprocess_data(X, y, preprocessing_enabled, preprocessing_options)
+    X_processed, y_processed = preprocess_data(X, y, enable_preprocessing, preprocessing_options)
     
     # Division des données en ensembles d'entraînement et de test
     X_train, X_test, y_train, y_test = train_test_split(X_processed, y_processed if y_processed is not None else y, test_size=0.2, random_state=42)
@@ -264,7 +264,7 @@ def model_train(file, model_name, selected_features=None, target_feature=None, a
 
     return md,params
 
-def model_evaluate(params):
+def model_evaluate(params, model):
     # Liste des algorithmes de régression
     regression_algorithms = ['Linear Regression', 'SVR', 'Decision Tree Regressor', 'Ridge', 'Lasso', 'Elastic Net', 'Random Forest Regressor', 'Gradient Boosting Regressor', 'AdaBoost Regressor', 'Bagging Regressor']
     
@@ -290,17 +290,11 @@ def model_evaluate(params):
     y_train = np.array(y_train) if isinstance(y_train, list) else y_train
     
     # Load the model from disk if available, otherwise use the model in params
-    if 'model_path' in params and os.path.exists(params['model_path']):
-        try:
-            import joblib as jb
-            model = jb.load(params['model_path'])
-        except Exception as e:  
-            print(f"Error loading model from disk: {str(e)}")
     
     if params['algo'] in regression_algorithms:
         # Regression metrics
         y_pred = model.predict(X_test)
-        params['metrics'] = {
+        metrics = {
             'mae': float(mean_absolute_error(y_test, y_pred)),  # Convertir en float pour JSON
             'mse': float(mean_squared_error(y_test, y_pred)),   # Convertir en float pour JSON
             'score': float(model.score(X_train, y_train)),  # Convertir en float pour JSON
@@ -308,18 +302,10 @@ def model_evaluate(params):
     else:
         # Classification metrics
         y_pred = model.predict(X_test)
-        params['metrics'] = {
+        metrics = {
             'accuracy': float(accuracy_score(y_test, y_pred)),  # Convertir en float pour JSON
             'precision': float(precision_score(y_test, y_pred, average='weighted')),  # Convertir en float pour JSON
             'recall': float(recall_score(y_test, y_pred, average='weighted')),  # Convertir en float pour JSON
             'f1_score': float(f1_score(y_test, y_pred, average='weighted'))  # Convertir en float pour JSON
         }
-    
-    # Reconvertir les données en format sérialisable pour le stockage dans la session
-    # Vérifier d'abord si c'est un DataFrame, puis si c'est un array numpy, sinon laisser tel quel
-    params['X_test'] = X_test.values.tolist() if isinstance(X_test, pd.DataFrame) else X_test.tolist() if hasattr(X_test, 'tolist') and not isinstance(X_test, list) else X_test if isinstance(X_test, list) else []
-    params['y_test'] = y_test.tolist() if hasattr(y_test, 'tolist') and not isinstance(y_test, list) else y_test if isinstance(y_test, list) else []
-    params['X_train'] = X_train.values.tolist() if isinstance(X_train, pd.DataFrame) else X_train.tolist() if hasattr(X_train, 'tolist') and not isinstance(X_train, list) else X_train if isinstance(X_train, list) else []
-    params['y_train'] = y_train.tolist() if hasattr(y_train, 'tolist') and not isinstance(y_train, list) else y_train if isinstance(y_train, list) else []
-    
-    return params
+    return metrics

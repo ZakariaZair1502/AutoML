@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import {useNavigate, useLocation} from 'react-router-dom';
+import { useLocation} from 'react-router-dom';
 import { CustomCard, CustomCardHeader, CustomCardBody } from '@/components/ui/custom-card';
 import { Form, FormGroup, FormLabel, FormInput } from '@/components/ui/custom-form';
 import { CustomButton } from '@/components/ui/custom-button';
@@ -19,7 +19,6 @@ interface ModelInfo {
 }
 
 const Prediction = () => {
-  const navigate = useNavigate();
   const [modelInfo, setModelInfo] = useState<ModelInfo>({
     filename: '',
     algo: '',

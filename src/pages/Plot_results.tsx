@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import Plot from 'react-plotly.js';
-import { useSearchParams, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { CustomCard, CustomCardHeader, CustomCardBody } from '@/components/ui/custom-card';
 import { CustomButton } from '@/components/ui/custom-button';
 import { BarChart3, ArrowLeft, TrendingUp } from 'lucide-react';
@@ -51,7 +51,7 @@ const Results = () => {
     setPlotData(parsedPlotData);
     } catch (err) {
       console.error(err);
-      setError('Erreur lors du chargement de la visualisation.');
+      setError('Failed to fetch plot data');
     } finally {
       setLoading(false);
     }
@@ -62,7 +62,7 @@ const Results = () => {
   };
 
   const handleBackToHome = () => {
-    navigate('/');
+    navigate('/home');
   };
 
   const renderPlot = () => {
@@ -149,7 +149,7 @@ const Results = () => {
     return (
       <Layout>
         <div className="min-h-screen flex flex-col items-center justify-center text-white text-center">
-          <p className="text-red-400">{error || 'Erreur de chargement.'}</p>
+          <p className="text-red-400">{error || 'error'}</p>
           <CustomButton onClick={handleBackToEvaluation} className="mt-4">
             Retour à l'évaluation
           </CustomButton>
@@ -163,20 +163,20 @@ const Results = () => {
       <div className="min-h-screen py-12 px-4 ">
         <div className="container mx-auto max-w-6xl">
           <div className="text-center mb-8">
-            <h1 className="text-4xl font-bold text-white mb-4">Visualisation des Résultats</h1>
+            <h1 className="text-4xl font-bold text-white mb-4">Plot Visualization</h1>
           </div>
 
           <CustomCard className="mb-8">
             <CustomCardHeader>
               <div className="flex items-center space-x-2">
                 <BarChart3 className="w-6 h-6 text-purple-400" />
-                <h2 className="text-2xl font-semibold text-white">Informations du Graphique</h2>
+                <h2 className="text-2xl font-semibold text-white">Graph infos</h2>
               </div>
             </CustomCardHeader>
             <CustomCardBody>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="p-4 bg-white/5 rounded-lg border border-white/10">
-                  <p className="text-gray-400 text-sm">Type de Visualisation</p>
+                  <p className="text-gray-400 text-sm">Visualization type</p>
                   <p className="text-white font-medium">{plotData.type}</p>
                 </div>
                 <div className="p-4 bg-white/5 rounded-lg border border-white/10">
@@ -191,7 +191,7 @@ const Results = () => {
             <CustomCardHeader>
               <div className="flex items-center space-x-2">
                 <TrendingUp className="w-6 h-6 text-purple-400" />
-                <h2 className="text-2xl font-semibold text-white">Graphique Interactif</h2>
+                <h2 className="text-2xl font-semibold text-white">Graph</h2>
               </div>
             </CustomCardHeader>
             <div>
@@ -209,11 +209,11 @@ const Results = () => {
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
                 <CustomButton onClick={handleBackToEvaluation} variant="secondary" size="lg">
                   <ArrowLeft className="w-5 h-5" />
-                  <span>Retour à l'évaluation</span>
+                  <span>Back to evaluation</span>
                 </CustomButton>
                 <CustomButton onClick={handleBackToHome} variant="outline" size="lg">
                   <ArrowLeft className="w-5 h-5" />
-                  <span>Retour à l'accueil</span>
+                  <span>Back to homepage</span>
                 </CustomButton>
               </div>
             </CustomCardBody>

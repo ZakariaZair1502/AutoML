@@ -1,9 +1,9 @@
 
 import React, { useEffect, useState } from "react";
 
-import { CustomCard, CustomCardHeader, CustomCardBody, CustomCardTitle, CustomCardFooter } from '@/components/ui/custom-card';
+import { CustomCard, CustomCardBody } from '@/components/ui/custom-card';
 import { CustomButton } from '@/components/ui/custom-button';
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import Layout from '../components/Layout';
 
 interface Project {
@@ -14,12 +14,7 @@ interface Project {
   algo: string;
   accuracy?: number;
   mse?: number;
-  silhouette_score?: number;
-  created: string; // ISO string
-  error_curve?: string;
-  classification?: string; // image URL
-  clusters?: number | string; // image URL
-  preprocessing_viz?: string;
+  silhouette?: number;
 }
 
 const Dashboard: React.FC = () => {
@@ -145,7 +140,7 @@ const Dashboard: React.FC = () => {
                 (p) =>
                   typeof p.accuracy === "number" ||
                   typeof p.mse === "number" ||
-                  typeof p.silhouette_score === "number"
+                  typeof p.silhouette === "number"
               ).length
             }
           </h3>
@@ -163,7 +158,6 @@ const Dashboard: React.FC = () => {
                 <th className="text-left p-4 text-gray-400">Type</th>
                 <th className="text-left p-4 text-gray-400">Algorithm</th>
                 <th className="text-left p-4 text-gray-400">Score</th>
-                <th className="text-left p-4 text-gray-400">Created</th>
                 <th className="text-left p-4 text-gray-400">Actions</th>
               </tr>
             </thead>
@@ -190,29 +184,32 @@ const Dashboard: React.FC = () => {
                         {(project.accuracy * 100).toFixed(1)}% Accuracy
                       </span>
                     ) : project.mse !== undefined ? (
-                      <span className="text-blue-400">{project.mse.toFixed(2)} MSE</span>
-                    ) : project.silhouette_score !== undefined ? (
+                      <span className="text-blue-400">{typeof project.mse === "number" ? project.mse.toFixed(2) : "N/A"}MSE</span>
+                    ) : project.silhouette !== undefined ? (
                       <span className="text-blue-600">
-                        {(project.silhouette_score * 100).toFixed(1)}% silhouette
+                        {(project.silhouette * 100).toFixed(1)}% silhouette
                       </span>
                     ) : (
                       <span className="text-gray-400">N/A</span>
                     )}
                   </td>
-                  <td className="p-4 text-gray-400">
-                    {new Date(project.created).toLocaleString()}
-                  </td>
                   <td className="p-4">
                     <div className="flex space-x-2">
-                    <button onClick={() => handleDetails(project.name)} title="View" className="text-gray-400 hover:text-white">
-                        <i className="ri-eye-line"></i>
-                      </button>
-                      <button  className="text-gray-400 hover:text-white" title="Download">
-                        <i className="ri-download-line"></i>
-                      </button>
-                      <button onClick={() => handleDelete(project.name)} className="text-red-400 hover:text-red-600" title="Delete">
-                        <i className="ri-delete-bin-line"></i>
-                      </button>
+                      {
+                        project.type !== "preprocessing" ? (
+                          <><button onClick={() => handleDetails(project.name)} title="View" className="text-gray-400 hover:text-white">
+                            <i className="ri-eye-line"></i>
+                          </button><button className="text-gray-400 hover:text-white" title="Download">
+                              <i className="ri-download-line"></i>
+                            </button><button onClick={() => handleDelete(project.name)} className="text-red-400 hover:text-red-600" title="Delete">
+                              <i className="ri-delete-bin-line"></i>
+                            </button></>
+                        ) : (
+                          <button onClick={() => handleDelete(project.name)} className="text-red-400 hover:text-red-600" title="Delete">
+                            <i className="ri-delete-bin-line"></i>
+                          </button>
+                        )
+                      }
                     </div>
                   </td>
                 </tr>

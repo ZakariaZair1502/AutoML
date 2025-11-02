@@ -74,18 +74,18 @@ def get_features(file):
     except Exception as e:
         raise ValueError(f"Erreur lors de la lecture du fichier CSV : {str(e)}")
 
-def preprocess_data(X, preprocessing_enabled=False, preprocessing_options=None):
+def preprocess_data(X, enable_preprocessing=False, preprocessing_options=None):
     """Prétraite les données selon les options sélectionnées.
     
     Args:
         X: Les features à prétraiter
-        preprocessing_enabled: Booléen indiquant si le prétraitement est activé
+        enable_preprocessing: Booléen indiquant si le prétraitement est activé
         preprocessing_options: Liste des options de prétraitement sélectionnées
         
     Returns:
         X_processed: Les features prétraitées
     """
-    if not preprocessing_enabled or not preprocessing_options:
+    if not enable_preprocessing or not preprocessing_options:
         return X
     
     X_processed = X.copy()
@@ -147,7 +147,7 @@ def preprocess_data(X, preprocessing_enabled=False, preprocessing_options=None):
     
     return X_processed
 
-def model_train(file, model_name, selected_features=None, algorithm_parameters=None, preprocessing_enabled=False, preprocessing_options=None):
+def model_train(file, model_name, selected_features=None, algorithm_parameters=None, enable_preprocessing=False, preprocessing_options=None):
     """
     Entraîne un modèle de clustering sur les données.
     
@@ -157,7 +157,7 @@ def model_train(file, model_name, selected_features=None, algorithm_parameters=N
         selected_features: Les colonnes à utiliser pour le clustering
         n_clusters: Le nombre de clusters (pour les algorithmes basés sur la partition)
         algorithm_parameters: Dictionnaire contenant les paramètres spécifiques à l'algorithme
-        preprocessing_enabled: Booléen indiquant si le prétraitement est activé
+        enable_preprocessing: Booléen indiquant si le prétraitement est activé
         preprocessing_options: Liste des options de prétraitement sélectionnées
         
     Returns:
@@ -181,7 +181,7 @@ def model_train(file, model_name, selected_features=None, algorithm_parameters=N
         X = data
     
     # Prétraitement des données selon les options sélectionnées
-    X_processed = preprocess_data(X, preprocessing_enabled, preprocessing_options)
+    X_processed = preprocess_data(X, enable_preprocessing, preprocessing_options)
     
     # Conversion en numpy array pour les algorithmes
     X_scaled = X_processed.values
@@ -193,11 +193,6 @@ def model_train(file, model_name, selected_features=None, algorithm_parameters=N
     # Initialisation du modèle avec les paramètres appropriés
     if algorithm_parameters:
         processed_parameters = convert_algorithm_parameters(algorithm_parameters)
-        # Save model parameters to JSON file
-        model_params_path = os.path.join(os.path.dirname(file), 'models', 'model_params.json')
-        os.makedirs(os.path.dirname(model_params_path), exist_ok=True)
-        with open(model_params_path, 'w') as f:
-            json.dump(processed_parameters, f, indent=4)
         model = ALGORITHMS[model_name](**processed_parameters)
     else:
         model = ALGORITHMS[model_name]()
@@ -415,7 +410,5 @@ def model_evaluate(params):
             cluster_counts[f'cluster_{label}'] = int(count)
     metrics_dict['cluster_counts'] = cluster_counts
 
-    # Ajout au dictionnaire params
-    params['metrics'] = metrics_dict
 
-    return params
+    return metrics_dict

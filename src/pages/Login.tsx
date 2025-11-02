@@ -4,7 +4,7 @@ import Layout from '@/components/Layout';
 import { CustomCard, CustomCardHeader, CustomCardBody } from '@/components/ui/custom-card';
 import { Form, FormGroup, FormLabel, FormInput } from '@/components/ui/custom-form';
 import { CustomButton } from '@/components/ui/custom-button';
-import { User, Lock, Eye, EyeOff } from 'lucide-react';
+import { User, Lock, Eye, EyeOff, LogOut } from 'lucide-react';
 
 const Login = () => {
   const navigate = useNavigate();
@@ -40,19 +40,16 @@ const Login = () => {
           password: formData.password,
         }),
       });
-  
       if (response.ok) {
+        const data = await response.json();
         // Optionally handle session/token here
         localStorage.setItem('user', JSON.stringify(formData.username));
-        if (formData.username == 'admin' && formData.password == 'admin')
+        if (data.role == 'admin')
         {
           navigate('/admin')
         }else{
           navigate('/home');
         }
-      } else {
-        const data = await response.json();
-        alert(data.message || 'Login failed');
       }
     } catch (error) {
       console.error('Login error:', error);
@@ -64,7 +61,7 @@ const Login = () => {
   
 
   return (
-    <Layout>
+    <Layout showNavbar={false} showFooter={false}>
       <div className="min-h-screen flex items-center justify-center py-12 px-4">
         <div className="w-full max-w-md">
           <CustomCard>

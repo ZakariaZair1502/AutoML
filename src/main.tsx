@@ -20,6 +20,7 @@ import ProjectDetails from '@/pages/ProjectDetails'
 import Plot_results from '@/pages/Plot_results'
 import './index.css'
 
+
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <BrowserRouter

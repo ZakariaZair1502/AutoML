@@ -1,19 +1,18 @@
 import React, { useState, useRef, useEffect } from "react";
-import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import Layout from "@/components/Layout";
 import {
   CustomCard,
   CustomCardHeader,
   CustomCardBody,
-  CustomCardFooter,
-} from "@/components/ui/custom-card";
+} 
+from "@/components/ui/custom-card";
 import {
   Form,
   FormGroup,
   FormLabel,
   FormInput,
   FormSelect,
-  FormHelperText,
   FormCheckbox,
 } from "@/components/ui/custom-form";
 import { CustomButton } from "@/components/ui/custom-button";
@@ -26,7 +25,6 @@ interface DatasetPreview {
 const UploadPage: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
   const [learningType, setLearningType] = useState<string>("");
   const [datasetType, setDatasetType] = useState<string>("custom");
   const [predefinedDataset, setPredefinedDataset] = useState<string>("");
@@ -380,7 +378,7 @@ const UploadPage: React.FC = () => {
       });
 
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        throw new Error(`HTTP error! status: ${response.status}, error : ${response.statusText}`);
       }
 
       const contentType = response.headers.get("content-type");
@@ -983,7 +981,7 @@ const UploadPage: React.FC = () => {
                     <p>Loading preview...</p>
                   </div>
                 ) : previewData ? (
-                  <div className="overflow-x-auto bg-white">
+                  <div className="overflow-x-auto bg-white text-black">
                     <table className="min-w-full divide-y divide-gray-700">
                       <thead>
                         <tr>

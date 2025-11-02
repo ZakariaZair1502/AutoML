@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { CustomCard, CustomCardHeader, CustomCardBody } from '@/components/ui/custom-card';
 import { CustomButton } from '@/components/ui/custom-button';
@@ -17,9 +17,7 @@ interface Project {
   type: string;
   algo?: string;
   params?: ProjectParams;
-  error_curve?: string;
-  clusters?: string;
-  preprocessing_viz?: string;
+  figure: string;
 }
 
 const ProjectDetails = () => {
@@ -289,11 +287,11 @@ const ProjectDetails = () => {
               </div>
             </CustomCardHeader>
             <CustomCardBody>
-              {project.error_curve || project.clusters || project.preprocessing_viz ? (
+              {project.figure ? (
                 <div className="flex justify-center">
                   <img
-                    src={project.error_curve || project.clusters || project.preprocessing_viz}
-                    alt={project.error_curve ? "Courbe d'erreur" : project.clusters ? "Visualisation des clusters" : "Visualisation du prétraitement"}
+                    src={`data:image/png;base64,${project.figure}`}
+                    alt="Project figure"
                     className="max-w-full h-auto rounded-lg border border-white/10"
                   />
                 </div>

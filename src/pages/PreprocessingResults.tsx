@@ -4,7 +4,7 @@ import Layout from '@/components/Layout';
 import { CustomCard, CustomCardHeader, CustomCardBody } from '@/components/ui/custom-card';
 import { CustomButton } from '@/components/ui/custom-button';
 import { Badge } from '@/components/ui/badge';
-import { CheckCircle, ArrowRight, Database, TrendingUp, AlertCircle } from 'lucide-react';
+import { CheckCircle, ArrowRight, Database, TrendingUp } from 'lucide-react';
 
 interface PreprocessingResult {
   name: string;
@@ -211,7 +211,7 @@ const PreprocessingResults = () => {
               </CustomCardHeader>
               <CustomCardBody>
                 {previewData ? (
-                  <div className="overflow-x-auto bg-white">
+                  <div className="overflow-x-auto text-black bg-white">
                     <table className="min-w-full divide-y divide-gray-700">
                       <thead>
                         <tr>
