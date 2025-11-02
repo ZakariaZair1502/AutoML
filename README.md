@@ -1,12 +1,29 @@
 # AutoML
 
-![AutoML Logo](https://img.shields.io/badge/AutoModler-ML%20Platform-blue)
-![License](https://img.shields.io/badge/license-MIT-green)
-![React](https://img.shields.io/badge/React-19.1.0-61DAFB?logo=react)
-![TypeScript](https://img.shields.io/badge/TypeScript-5.0.0+-3178C6?logo=typescript)
-![MongoDB](https://img.shields.io/badge/MongoDB-4EA94B?style=for-the-badge&logo=mongodb&logoColor=white)
+<!-- Flask -->
 ![Flask](https://img.shields.io/badge/Flask-000000?style=for-the-badge&logo=flask&logoColor=white)
+
+<!-- MongoDB -->
+![MongoDB](https://img.shields.io/badge/MongoDB-4EA94B?style=for-the-badge&logo=mongodb&logoColor=white)
+
+<!-- React -->
+![React](https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)
+
+<!-- TypeScript -->
+![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=for-the-badge&logo=typescript&logoColor=white)
+
+<!-- Python -->
+![Python](https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white)
+
+<!-- scikit-learn -->
 ![scikit-learn](https://img.shields.io/badge/scikit--learn-F7931E?style=for-the-badge&logo=scikit-learn&logoColor=white)
+
+<!-- AutoML (Custom logo via generic AI/ML icon) -->
+![AutoML](https://img.shields.io/badge/AutoML-FF6F00?style=for-the-badge&logo=ai&logoColor=white)
+
+<!-- License -->
+![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg?style=for-the-badge&logo=gnu)
+
 
 AutoML is an intuitive platform for machine learning workflows that simplifies data preprocessing, model training, and evaluation through a user-friendly interface.
 
